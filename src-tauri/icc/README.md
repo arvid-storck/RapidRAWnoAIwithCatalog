@@ -1,0 +1,1 @@
+`sRGB-v2-magic.icc` comes from [saucecontrol/Compact-ICC-Profiles](https://github.com/saucecontrol/Compact-ICC-Profiles), commit abb1b6f, under CC0-1.0, as bundled in RapidRAW v1.6.5. The 736-byte sRGB IEC 61966-2-1 profile is embedded in JPEG and PNG exports, independently of the keep-metadata option.

@@ -1,0 +1,78 @@
+<details>
+
+- **2026-10-08 — Workspace and catalog cleanup:** Moved Customize panels into Settings only and lowered the panel-visibility menu. Replaced the large Catalog button and “images shown” label with page X of Y and matching/total image counts. Removed the header Refresh button: it only reloaded the index, not scanned files; use Catalog folders → Rescan folders to find disk changes.
+- **2026-10-08 — Albums and masking:** Fixed ordinary album groups being hidden, auto-expanded newly created groups, and added right-click → Edit filters for existing smart groups. Healing/Cloning now previews the stroke locally and commits once on release. Added classic, non-AI Quick Selection with color/contrast-based connected-region selection, tolerance and erasing. Selection is refined after releasing the brush.
+- **2026-10-08 — Code and translations:** Removed FolderTree and its unused navigation state, commands and folder dialogs, CLI batch export and unused editing-preset migration. Kept GUI export, export-setting presets, crop ratios and external-editor round trips. Localized panel visibility, catalog/import controls, remaining literal UI labels and notifications. Catalog loading no longer depends on the filter panel being visible. Updated current implementation documentation and added catalog/group regression checks.
+- **2026-10-06:** Removed the editing Presets panel, community-preset browser and camera tethering. Simplified composition guides to Rule of Thirds, removed unused icons and splash-image references, and updated maintainer documentation.
+- **2026-10-06 — Selected RapidRAW 1.6.5 features:** Added Pick/Reject flags (P/X/U), badges and catalog filtering; cached edge-aware guided filtering for detail and tonal adjustments; precision curves with Shift/Alt fine adjustment and inactive-channel references; embedded sRGB ICC profiles in JPEG/PNG exports; and persistent panel/tool ordering, visibility and collapse controls. No cloud or generative-AI features were imported.
+- **2026-10-06 — Kelvin white balance:** Replaced the old relative white-balance controls with temperature in Kelvin (2000–50000 K) and tint. In Color → White Balance, click the pipette and click a neutral spot or drag over a neutral area. Sampling uses the original image and works with GPU previews. RAW starts from its camera white balance; preview, thumbnails and export share the same correction. Old relative temperature/tint edits are no longer applied; re-set white balance on previously edited images if needed.
+- **2026-10-06 — Deep cleanup:** `npm run clean:deep` also removes downloaded ONNX runtime libraries from the source project's resources. Regular `clean` keeps them; the next native build downloads the required library again.
+- **2026-10-06 — Cleanup:** Removed the editing Presets panel and mask-preset actions, community-preset browser, camera tethering, unused icons and splash-image references. Rule of Thirds is now the only composition guide. Updated the code map and kept technical structure documentation in `docs/README.md`.
+- **2026-10-06 — Library defaults:** Default sorting is now capture date (oldest first). Display, thumbnail-size and layout menus use the same theme-aware appearance as the sort menu. Saved sorting preferences remain respected.
+- **2026-10-06 — Build size:** Removed unused Shell/filesystem plugin registration, unused frontend dependencies and unused Rust dependency features. Kept all image formats, rendering performance and noise reduction. Portable Windows packaging excludes other platforms' ONNX runtimes and reports package sizes.
+- **2026-10-02 — In-process RAW:** Restored the built-in rawler developer and Linear RAW Processing options. RAW pixels now stay in memory instead of being written to a temporary transfer image. Removed the external RAW component and its updater; Lensfun profile updates remain available. Rawler updates are now a source/dependency change followed by an application rebuild.
+- **2026-10-01 — Library, zoom, and RAW:** Fixed masonry selection scroll positions, improved library display-menu contrast, aligned zoom limits with decoded/cropped image dimensions, and switched RAW development to the separately installed external Rawler component. The external Rawler 0.8 source contains the Olympus E-M1X CFA-pattern fix.
+- **2026-09-29 — RAW and retouching:** Made Highlight Recovery adjustable and switchable for both RAW-engine paths, exposed non-destructive Clone and Heal spot tools with a selectable source, and kept an edited image's rating visible when a new rating removes it from an active catalog filter.
+- **2026-09-28 — Validation:** Fixed lint errors, completed missing plural forms, and synchronized newly extracted translation keys. Existing explicit `any` types remain visible as lint warnings; untranslated new strings retain English fallback text.
+- **2026-09-28 — Desktop focus:** Removed Android build/release wiring and Android-only UI and native integration. Desktop targets remain Windows, macOS, and Linux.
+- **2026-09-28 — Zoom performance:** Started high-resolution zoom previews sooner, skipped analytics work for zoom-only renders, reduced redundant editor updates, and avoided full-size empty mask uploads on unmasked images.
+- **2026-09-28 — Editing and export:** Added adjustable RAW highlight recovery, smoother vibrance, crop/pan/zoom shortcuts, a justified masonry-style library layout, a neutral-grey canvas setting, and true 8/16-bit TIFF export options while retaining catalog and configurable maximum zoom behavior.
+- **2026-09-28 — Catalog and import:** Restored EXIF fallback when loading and saving sidecars, made `I` restore the Info panel's previous state, separated already-existing files from import failures, and added video import/catalog entries that open in the system player.
+- **2026-09-26 — UI cleanup:** Removed the bulk “Clear All Tags” action and bottom-right panel toggle buttons; moved the panel-visibility menu lower and kept filmstrip visibility there.
+- **2026-09-26 — Maintenance:** Added `npm run clean` for frontend and both Rust build-output directories, plus optional `npm run clean:deep` for installed npm dependencies.
+- **2026-09-26 — Documentation:** Added a maintainer [code map](docs/README.md) covering the frontend, Rust modules, scripts, and where to edit common features.
+- **2026-09-24 — Import and layout:** Added copy, move, and index-at-existing-location import choices; moved maximum zoom into Settings, set its new default to 100%, and made the top, bottom, left, and right panels hideable.
+- **2026-09-24 — Portable data and navigation:** Kept portable settings and other program data alongside the portable EXE; refined import access and moved catalog page controls beside Catalog in the top bar.
+- **2026-09-16 — Large libraries:** Made the catalog the primary library workflow with bounded 500-image pages, SQLite-side filtering/sorting, incremental loading, and thumbnail-cache pruning.
+- **2026-09-16 — Filters and size:** Added combinable multi-select camera, lens, rating (including 0), tag, color, and file-type filters. Removed unused upstream AI-oriented UI/build paths while retaining noise reduction.
+- **2026-09-04 — Catalog UI:** Added the year/month/day Catalog dates tree in place of folder browsing, fixed EXIF date display, and added image context-menu actions for catalog removal separately from file deletion.
+- **2026-09-04 — Portable Windows:** Fixed a portable build that incorrectly required the localhost development server and produced a self-contained ZIP with bundled resources.
+- **2026-09-03 — Catalog:** Added a rebuildable SQLite index for explicitly added folders, metadata and sidecar indexing, corruption recovery, incremental rescans, and removal from the index without deleting photos.
+- **2026-09-03 — Filters and albums:** Added catalog metadata filtering, dynamic tag choices from indexed images, and smart groups based on catalog filter criteria.
+- **2026-09-03 — Components:** Added separate in-app RAW-engine and Lensfun update actions with restart support when required.
+
+</details>
+
+<details>
+<summary><strong>Original RapidRAW Development Log</strong></summary>
+
+* **Day 1: June 13th, 2025** - Project inception, basic Tauri setup, and initial brightness/contrast shader implementation.
+* **Day 2: June 14th** - Core architecture refactor, full library support, optimized image loading, histogram and curve editor support, and UI themes.
+* **Day 3: June 15th** - Working crop tool, preset system, context menus, automatic sidecar saving, thumbnail generation, and refined color adjustments.
+* **Day 4: June 16th** - Initial local-adjustment masking prototype and preset mask support.
+* **Day 5: June 17th** - Major UI overhaul, filmstrip, resizable panels, mask scaling fixes, and library improvements.
+* **Day 6: June 18th** - Performance tuning, reduced GPU calls, smoother cropping/editing, and panel UI-state persistence.
+* **Day 7: June 19th** - Multi-selection and adjustment copy/paste between images.
+* **Day 8: June 20th** - Initial RAW support and EXIF metadata viewer.
+* **Day 9: June 21st** - Detail adjustments and linear RAW processing pipeline.
+* **Day 10: June 22nd** - Layer stacking, batch export, and preset import/export.
+* **Day 11: June 23rd** - Full undo/redo functionality and settings-panel completion.
+* **Day 12: June 24th** - Image rotation and fixes for crop/rotation mask alignment.
+* **Day 13: June 25th** - Bitmap-based mask system with brush and gradient tools.
+* **Day 14: June 26th-27th** - Final polish of the initial application architecture and editing workflow.
+* **2025-07-03:** Switched from rawloader to [rawler](https://github.com/dnglab/dnglab/tree/main/rawler) for wider RAW support.
+* **2025-07-10:** Reworked batch export and asynchronous thumbnail generation.
+* **2025-08-15:** Added full-resolution images when zooming.
+* **2025-08-21:** Added LUT support.
+* **2025-09-02:** Transitioned to Rust 2024 and GPU image caching.
+* **2025-09-23:** Added color calibration.
+* **2025-11-08:** Added EXR support.
+* **2025-11-18:** Added virtual copies and library improvements.
+* **2025-12-22:** Added BM3D noise reduction.
+* **2026-01-24:** Added automatic Lensfun lens, TCA, and vignette correction.
+* **2026-02-13:** Added HDR merging.
+* **2026-03-03:** Added instant image rendering and real-time histogram updates.
+* **2026-04-18:** Implemented direct WGPU rendering.
+* **2026-05-01:** Added manual noise reduction controls and thumbnail-system optimizations.
+* **2026-06-14:** Added Korean translation support.
+* **2026-07-31:** Enabled WGPU white-balance color picker support.
+* **2026-08-07:** Updated Lensfun database.
+* **2026-08-14:** Export began preserving and writing full EXIF metadata.
+* **2026-08-16:** Added focus stacking.
+* **2026-08-17:** Added built-in film emulations.
+* **2026-08-20:** Added drag-and-drop image moving.
+* **2026-08-29:** Improved EXIF metadata processing during export.
+* **2026-09-01:** Added guided perspective correction.
+* **2026-09-02:** Refactored crop and integrated transform/lens correction into the canvas.
+
+</details>
