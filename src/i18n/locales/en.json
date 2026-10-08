@@ -658,7 +658,6 @@
         "maskName_one": "Mask {{count}}",
         "maskName_other": "Mask {{count}}"
       },
-      "quickSelectionHelp": "Paint inside the area to select connected, similar colors. Increase tolerance to include more variation; use the eraser to subtract. Selection updates when you release the brush.",
       "rangeTitle": "Ranges & Global",
       "resetMaskingTooltip": "Reset Masking",
       "settings": {
@@ -867,31 +866,6 @@
     }
   },
   "library": {
-    "culling": {
-      "addTagPlaceholder": "Add tag...",
-      "altCullingPreviewHighRes": "Culling Preview High Res",
-      "altThumbnailLoading": "Thumbnail Loading",
-      "aperture": "Aperture",
-      "cameraSettings": "Camera Settings",
-      "clickThumbnailsHint": "Click thumbnails in the right sidebar to add them to the comparison view.",
-      "colorLabel": "Color Label",
-      "dimensions": "Dimensions",
-      "editImage": "Edit Image",
-      "focalLength": "Focal Length",
-      "iso": "ISO",
-      "metadata": "Metadata",
-      "noMetadataAvailable": "No metadata available",
-      "none": "None",
-      "noTagsAdded": "No tags added",
-      "rateAndLabel": "Rate & Label",
-      "rating": "Rating",
-      "selectImagesToCompare": "Select images to compare",
-      "shutterSpeed": "Shutter Speed",
-      "syncZoomAndPan": "Sync Zoom and Pan",
-      "tags": "Tags",
-      "toggleFit": "Toggle 1:1 / Fit",
-      "vc": "VC"
-    },
     "filters": {
       "edited": {
         "all": "All Images",
@@ -954,47 +928,6 @@
         "name": "Name",
         "rating": "Rating",
         "shutter": "Shutter"
-      }
-    },
-    "header": {
-      "search": {
-        "addFilterOrSearch": "Add filter or search...",
-        "indexingImages": "Indexing Images...",
-        "indexingProgress": "Indexing... ({{current}}/{{total}})",
-        "matchAll": "Match ALL tags",
-        "matchAny": "Match ANY tags",
-        "searchOrQuery": "Search or add query",
-        "tooltipAdvancedQueries": "Advanced Queries: iso:>800, f:<=2.8, s:1/200, mm:50, camera:sony",
-        "tooltipClearSearch": "Clear search",
-        "tooltipSearchFilter": "Search or Filter"
-      },
-      "title": "Library",
-      "viewOptions": {
-        "currentFolder": "Current Folder",
-        "displayMode": "Display Mode",
-        "exifDisabledTooltip": "Enable EXIF Reading in Settings to use this option.",
-        "filterByColorLabel": "Filter by Color Label",
-        "filterByEdited": "Filter by Edit Status",
-        "filterByFileType": "Filter by File Type",
-        "filterByRating": "Filter by Rating",
-        "groupEditedFiles": "Include edited files in groups",
-        "groupIgnoreMetadata": "Ignore mismatched EXIF dates",
-        "groupOff": "Off",
-        "groupPreferJpeg": "Prefer JPEG",
-        "groupPreferRaw": "Prefer RAW",
-        "groupRawJpeg": "Group RAW + JPEG",
-        "metadataAlways": "Always",
-        "metadataHover": "On Hover",
-        "metadataOff": "Off",
-        "noLabel": "No Label",
-        "recursive": "Recursive",
-        "showMetadata": "Show Metadata",
-        "sortAscending": "Sort Ascending",
-        "sortBy": "Sort by",
-        "sortDescending": "Sort Descending",
-        "thumbnailFit": "Thumbnail Fit",
-        "thumbnailSize": "Thumbnail Size",
-        "title": "View Options"
       }
     },
     "import": {
@@ -1069,7 +1002,6 @@
       "others": "Others",
       "quickErase": "Quick Erase",
       "quickEraser": "Quick Eraser",
-      "quickSelection": "Quick Selection",
       "radial": "Radial",
       "retouch": "Retouch",
       "sky": "Sky",
@@ -1579,7 +1511,6 @@
         "copy_image_path": "Copy path of selected image(s)",
         "cycle_zoom": "Cycle zoom (Fit, 2x Fit, 100%)",
         "delete_selected": "Delete selected file(s)",
-        "focus_search": "Focus search field",
         "open_image": "Open selected image",
         "open_settings": "Open settings",
         "paste_adjustments": "Paste copied adjustments",

@@ -29,7 +29,6 @@ export enum Mask {
   AiSubject = 'ai-subject',
   All = 'all',
   Brush = 'brush',
-  QuickSelection = 'quick-selection',
   Flow = 'flow',
   Color = 'color',
   Linear = 'linear',
@@ -82,7 +81,6 @@ export function formatMaskTypeName(type: string) {
   if (type === Mask.AiSky) return i18n.t('masks.types.sky');
   if (type === Mask.All) return i18n.t('masks.types.all');
   if (type === Mask.QuickEraser) return i18n.t('masks.types.quickEraser');
-  if (type === Mask.QuickSelection) return i18n.t('masks.types.quickSelection');
   if (type === Mask.Brush) return i18n.t('masks.types.brush');
   if (type === Mask.Flow) return i18n.t('masks.types.flow');
   if (type === Mask.Color) return i18n.t('masks.types.color');
@@ -115,7 +113,6 @@ export const MASK_ICON_MAP: Record<Mask, any> = {
   [Mask.AiSubject]: SquareMousePointer,
   [Mask.All]: RectangleHorizontal,
   [Mask.Brush]: Brush,
-  [Mask.QuickSelection]: SquareMousePointer,
   [Mask.Flow]: Droplets,
   [Mask.Color]: Droplet,
   [Mask.Linear]: TriangleRight,
@@ -129,7 +126,6 @@ export const MASK_ICON_MAP: Record<Mask, any> = {
 };
 
 export const MASK_BASIC_TYPES: Array<MaskType> = [
-  { disabled: false, icon: SquareMousePointer, name: 'Quick Selection', type: Mask.QuickSelection },
   { disabled: false, icon: Brush, name: 'Brush', type: Mask.Brush },
   { disabled: false, icon: Stamp, name: 'Clone', type: Mask.Clone },
   { disabled: false, icon: Bandage, name: 'Heal', type: Mask.Heal },

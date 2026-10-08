@@ -242,7 +242,7 @@ export default function LibraryGrid(props: any) {
     })),
   );
 
-  const [gridSize, setGridSize] = useState({ height: 0, width: 0 });
+  const [gridSize, setGridSize] = useState({ width: 0 });
   const [listHandle, setListHandle] = useListCallbackRef();
   const [collapsedRecursiveFolders, setCollapsedRecursiveFolders] = useState<Set<string>>(new Set());
   const libraryContainerRef = useRef<HTMLDivElement>(null);
@@ -292,10 +292,9 @@ export default function LibraryGrid(props: any) {
       const ro = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (entry) {
-          const height = Math.round(entry.contentRect.height);
           const width = Math.round(entry.contentRect.width);
 
-          setGridSize((prev) => (prev.height === height && prev.width === width ? prev : { height, width }));
+          setGridSize((prev) => (prev.width === width ? prev : { width }));
         }
       });
       ro.observe(el);
@@ -618,7 +617,7 @@ export default function LibraryGrid(props: any) {
     return (
       <div
         ref={libraryContainerRef}
-        className="flex-1 w-full h-full"
+        className="relative flex-1 min-h-0 min-w-0 w-full overflow-hidden"
         onClick={props.onClearSelection}
         onContextMenu={props.onEmptyAreaContextMenu}
       />
@@ -642,11 +641,11 @@ export default function LibraryGrid(props: any) {
   return (
     <div
       ref={libraryContainerRef}
-      className="flex-1 w-full h-full"
+      className="relative flex-1 min-h-0 min-w-0 w-full overflow-hidden"
       onClick={props.onClearSelection}
       onContextMenu={props.onEmptyAreaContextMenu}
     >
-      <div className="flex flex-col w-full h-full">
+      <div className="flex flex-col min-h-0 w-full h-full">
         {gridData.isListView && (
           <ListHeader
             widths={listColumnWidths}
@@ -656,8 +655,9 @@ export default function LibraryGrid(props: any) {
             onSortChange={handleHeaderSort}
           />
         )}
-        <div style={{ height: gridData.isListView ? gridSize.height - 36 : gridSize.height, width: gridSize.width }}>
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
           <List
+            style={{ height: '100%', width: '100%' }}
             listRef={setListHandle}
             rowCount={gridData.rows.length}
             rowHeight={getItemSize}

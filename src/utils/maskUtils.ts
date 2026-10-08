@@ -36,8 +36,6 @@ export const createSubMask = (
         ...common,
         parameters: { startX: width * 0.25, startY: height / 2, endX: width * 0.75, endY: height / 2, range: 50 },
       };
-    case Mask.QuickSelection:
-      return { ...common, parameters: { lines: [], tolerance: 20 } };
     case Mask.Brush:
       return { ...common, parameters: { lines: [] } };
     case Mask.Clone:

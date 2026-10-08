@@ -25,7 +25,6 @@ import GlobalTooltip from './components/ui/GlobalTooltip';
 import AppModals from './components/modals/AppModals';
 
 import SidePanelArea from './components/panel/SidePanelArea';
-import PanelVisibilityMenu from './components/panel/PanelVisibilityMenu';
 import { PANEL_ICONS } from './components/panel/PanelSwitcher';
 import Controls from './components/panel/right/ControlsPanel';
 import MetadataPanel from './components/panel/right/MetadataPanel';
@@ -794,8 +793,7 @@ function App() {
                   isResizing={isResizing}
                 />
               )}
-              <div className="relative flex-1 flex flex-col min-w-0">
-                <PanelVisibilityMenu />
+              <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
                 {selectedImage && externalEditSession && (
                   <ExternalEditBar
                     session={externalEditSession}
@@ -806,7 +804,7 @@ function App() {
                 )}
                 <div
                   className={clsx(
-                    'flex-1 flex flex-col min-w-0 h-full',
+                    'flex-1 flex flex-col min-w-0 min-h-0 h-full',
                     activeView === 'editor' && selectedImage ? 'flex' : 'hidden',
                   )}
                 >
@@ -839,7 +837,7 @@ function App() {
                 </div>
                 <div
                   className={clsx(
-                    'flex-1 flex flex-col min-w-0 h-full',
+                    'flex-1 flex flex-col min-w-0 min-h-0 h-full',
                     activeView === 'editor' && selectedImage ? 'hidden' : 'flex',
                   )}
                 >

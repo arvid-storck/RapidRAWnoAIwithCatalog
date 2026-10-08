@@ -60,11 +60,9 @@ pub struct MaskDefinition {
 
 impl MaskDefinition {
     pub fn requires_warped_image(&self) -> bool {
-        self.sub_masks.iter().any(|sm| {
-            sm.mask_type == "color"
-                || sm.mask_type == "luminance"
-                || sm.mask_type == "quick-selection"
-        })
+        self.sub_masks
+            .iter()
+            .any(|sm| sm.mask_type == "color" || sm.mask_type == "luminance")
     }
 }
 
@@ -1216,215 +1214,31 @@ fn generate_luminance_bitmap(
     Some(mask)
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct QuickSelectionParameters {
-    #[serde(default)]
-    lines: Vec<BrushLine>,
-    #[serde(default = "default_tolerance")]
-    tolerance: f32,
-    #[serde(default)]
-    rotation: f32,
-    #[serde(default)]
-    orientation_steps: u8,
-    #[serde(default)]
-    flip_horizontal: bool,
-    #[serde(default)]
-    flip_vertical: bool,
-}
-
-/// Classic seeded region growing on a bounded working image, not a model.
-/// Strokes and the result use the same oriented, uncropped coordinates as Brush.
-fn generate_quick_selection(
-    value: &Value,
-    width: u32,
-    height: u32,
-    scale: f32,
-    crop_offset: (f32, f32),
-    warped_image: Option<&DynamicImage>,
-) -> Option<GrayImage> {
-    let params: QuickSelectionParameters = serde_json::from_value(value.clone()).ok()?;
-    let image = warped_image?;
-    if !scale.is_finite() || scale <= 0.0 {
-        return None;
-    }
-    let (source_w, source_h) = image.dimensions();
-    let (full_w, full_h) = if params.orientation_steps % 2 == 1 {
-        (source_h, source_w)
-    } else {
-        (source_w, source_h)
-    };
-    if full_w == 0 || full_h == 0 {
-        return Some(GrayImage::new(width, height));
-    }
-    let down = (1024.0 / full_w.max(full_h) as f32).min(1.0);
-    let w = ((full_w as f32 * down).round() as u32).max(1);
-    let h = ((full_h as f32 * down).round() as u32).max(1);
-    let sx = w as f32 / full_w as f32;
-    let sy = h as f32 / full_h as f32;
-    let mut colors = vec![[0.0f32; 3]; (w * h) as usize];
-    let mut valid = vec![false; colors.len()];
-    let (sin, cos) = params.rotation.to_radians().sin_cos();
-    // Sample the already perspective-warped image through the inverse of
-    // orientation/flip/fine rotation, without allocating another full-size image.
-    for y in 0..h {
-        for x in 0..w {
-            let dx = (x as f32 + 0.5) / sx - full_w as f32 / 2.0;
-            let dy = (y as f32 + 0.5) / sy - full_h as f32 / 2.0;
-            let mut px = dx * cos + dy * sin + full_w as f32 / 2.0;
-            let mut py = -dx * sin + dy * cos + full_h as f32 / 2.0;
-            if params.flip_horizontal {
-                px = full_w as f32 - px;
-            }
-            if params.flip_vertical {
-                py = full_h as f32 - py;
-            }
-            let (ox, oy) = match params.orientation_steps % 4 {
-                1 => (py, source_h as f32 - px),
-                2 => (source_w as f32 - px, source_h as f32 - py),
-                3 => (source_w as f32 - py, px),
-                _ => (px, py),
-            };
-            let i = (y * w + x) as usize;
-            if ox >= 0.0 && oy >= 0.0 && ox < source_w as f32 && oy < source_h as f32 {
-                let p = image.get_pixel(ox as u32, oy as u32);
-                colors[i] = [p[0] as f32, p[1] as f32, p[2] as f32];
-                valid[i] = true;
-            }
-        }
-    }
-    let distance = |a: [f32; 3], b: [f32; 3]| -> f32 {
-        (0.30 * (a[0] - b[0]).powi(2) + 0.59 * (a[1] - b[1]).powi(2) + 0.11 * (a[2] - b[2]).powi(2))
-            .sqrt()
-    };
-    let tolerance = params.tolerance.clamp(1.0, 100.0) * 2.55;
-    let mut result = GrayImage::new(w, h);
-    for line in params.lines {
-        let mut visited = vec![false; colors.len()];
-        let mut queue = Vec::<usize>::new();
-        let mut palette = Vec::<[f32; 3]>::new();
-        // Use the painted centerline as seeds; the outer brush edge is only
-        // guidance and must not force a selection across a contrasting edge.
-        for point in &line.points {
-            let x = (point.x as f32 * sx).floor() as i32;
-            let y = (point.y as f32 * sy).floor() as i32;
-            if x < 0 || y < 0 || x >= w as i32 || y >= h as i32 {
-                continue;
-            }
-            let i = y as usize * w as usize + x as usize;
-            if !valid[i] {
-                continue;
-            }
-            if palette.len() < 16 && palette.iter().all(|p| distance(*p, colors[i]) > 8.0) {
-                palette.push(colors[i]);
-            }
-            if !visited[i] {
-                visited[i] = true;
-                queue.push(i);
-            }
-        }
-        let mut head = 0;
-        while head < queue.len() {
-            let i = queue[head];
-            head += 1;
-            let x = i % w as usize;
-            let y = i / w as usize;
-            let neighbors = [
-                (x > 0).then(|| i - 1),
-                (x + 1 < w as usize).then(|| i + 1),
-                (y > 0).then(|| i - w as usize),
-                (y + 1 < h as usize).then(|| i + w as usize),
-            ];
-            for j in neighbors.into_iter().flatten() {
-                if visited[j] || !valid[j] {
-                    continue;
-                }
-                if distance(colors[i], colors[j]) <= tolerance.max(12.0)
-                    && palette.iter().any(|p| distance(*p, colors[j]) <= tolerance)
-                {
-                    visited[j] = true;
-                    queue.push(j);
-                }
-            }
-        }
-        let value = if line.tool == "eraser" { 0 } else { 255 };
-        for i in queue {
-            result.as_mut()[i] = value;
-        }
-    }
-    // Feather only at working resolution, bounded independently of RAW size.
-    let softened = image::imageops::blur(&result, 0.6);
-    let mut output = GrayImage::new(width, height);
-    for (x, y, pixel) in output.enumerate_pixels_mut() {
-        let mx = (((x as f32 + 0.5 + crop_offset.0) / scale) * sx).floor() as i32;
-        let my = (((y as f32 + 0.5 + crop_offset.1) / scale) * sy).floor() as i32;
-        if mx >= 0 && my >= 0 && mx < w as i32 && my < h as i32 {
-            *pixel = *softened.get_pixel(mx as u32, my as u32);
-        }
-    }
-    Some(output)
+fn generate_all_bitmap(width: u32, height: u32) -> GrayImage {
+    GrayImage::from_pixel(width, height, Luma([255]))
 }
 
 #[cfg(test)]
-mod quick_selection_tests {
+mod legacy_brush_tests {
     use super::*;
-    use serde_json::json;
 
-    fn fixture() -> DynamicImage {
-        DynamicImage::ImageRgba8(RgbaImage::from_fn(30, 10, |x, _| {
-            if (10..20).contains(&x) {
-                Rgba([0, 0, 200, 255])
-            } else {
-                Rgba([200, 0, 0, 255])
-            }
+    #[test]
+    fn retired_selection_type_uses_stored_brush_without_source_image() {
+        let mut sub_mask: SubMask = serde_json::from_value(serde_json::json!({
+            "id":"legacy", "type":"quick-selection", "visible":true,
+            "mode":"additive", "parameters":{"lines":[
+                {"tool":"brush","brushSize":12,"feather":0.5,"points":[{"x":10,"y":10}]},
+                {"tool":"eraser","brushSize":4,"feather":0,"points":[{"x":10,"y":10}]}
+            ]}
         }))
+        .unwrap();
+        let legacy = generate_sub_mask_bitmap(&sub_mask, 24, 24, 1.0, (0.0, 0.0), None).unwrap();
+        sub_mask.mask_type = "brush".to_string();
+        let brush = generate_sub_mask_bitmap(&sub_mask, 24, 24, 1.0, (0.0, 0.0), None).unwrap();
+        assert_eq!(legacy, brush);
+        assert_eq!(legacy.get_pixel(10, 10)[0], 0);
+        assert!(legacy.get_pixel(13, 10)[0] > 0);
     }
-
-    #[test]
-    fn selection_stops_at_contrast_and_disconnected_colors() {
-        let image = fixture();
-        let params = json!({"lines":[{"tool":"brush","brushSize":10,"points":[{"x":4,"y":5}]}]});
-        let mask =
-            generate_quick_selection(&params, 30, 10, 1.0, (0.0, 0.0), Some(&image)).unwrap();
-        assert!(mask.get_pixel(4, 5)[0] > 250);
-        assert_eq!(mask.get_pixel(15, 5)[0], 0);
-        assert_eq!(mask.get_pixel(25, 5)[0], 0);
-    }
-
-    #[test]
-    fn eraser_and_empty_selection_are_empty() {
-        let image = fixture();
-        let params = json!({"lines":[
-            {"tool":"brush","brushSize":10,"points":[{"x":4,"y":5}]},
-            {"tool":"eraser","brushSize":10,"points":[{"x":4,"y":5}]}
-        ]});
-        assert!(
-            generate_quick_selection(&params, 30, 10, 1.0, (0.0, 0.0), Some(&image))
-                .unwrap()
-                .pixels()
-                .all(|p| p[0] == 0)
-        );
-        assert!(
-            generate_quick_selection(&json!({}), 30, 10, 1.0, (0.0, 0.0), Some(&image))
-                .unwrap()
-                .pixels()
-                .all(|p| p[0] == 0)
-        );
-    }
-
-    #[test]
-    fn cropped_scaled_and_flipped_selection_aligns() {
-        let image = fixture();
-        let params = json!({"flipHorizontal":true,"lines":[{"tool":"brush","brushSize":10,"points":[{"x":4,"y":5}]}]});
-        let mask = generate_quick_selection(&params, 5, 5, 0.5, (0.0, 0.0), Some(&image)).unwrap();
-        assert!(mask.get_pixel(2, 2)[0] > 250);
-        let mask = generate_quick_selection(&params, 5, 5, 0.5, (5.0, 0.0), Some(&image)).unwrap();
-        assert_eq!(mask.get_pixel(2, 2)[0], 0);
-    }
-}
-
-fn generate_all_bitmap(width: u32, height: u32) -> GrayImage {
-    GrayImage::from_pixel(width, height, Luma([255]))
 }
 
 fn generate_sub_mask_bitmap(
@@ -1454,20 +1268,9 @@ fn generate_sub_mask_bitmap(
             scale,
             crop_offset,
         )),
-        "brush" | "clone" | "heal" | "liquify" | "retouch" => Some(generate_brush_bitmap(
-            &sub_mask.parameters,
-            width,
-            height,
-            scale,
-            crop_offset,
-        )),
-        "quick-selection" => generate_quick_selection(
-            &sub_mask.parameters,
-            width,
-            height,
-            scale,
-            crop_offset,
-            warped_image,
+        // Read-only compatibility alias: retired selections use their stored strokes.
+        "brush" | "quick-selection" | "clone" | "heal" | "liquify" | "retouch" => Some(
+            generate_brush_bitmap(&sub_mask.parameters, width, height, scale, crop_offset),
         ),
         "flow" => Some(generate_flow_bitmap(
             &sub_mask.parameters,

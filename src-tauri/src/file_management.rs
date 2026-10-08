@@ -74,7 +74,8 @@ fn compute_thumbnail_cache_hash(path_str: &str, adjustments_bytes: &[u8]) -> Opt
         .as_secs();
 
     let mut hasher = blake3::Hasher::new();
-    hasher.update(b"guided-kelvin-v2");
+    // Regenerate thumbnails after retiring the selection-refinement renderer.
+    hasher.update(b"guided-kelvin-brush-compat-v8");
     hasher.update(path_str.as_bytes());
     hasher.update(&img_mod_time.to_le_bytes());
     hasher.update(adjustments_bytes);

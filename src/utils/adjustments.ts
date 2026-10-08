@@ -2,7 +2,7 @@ import type { WhiteBalance } from './whiteBalance';
 import { Crop } from 'react-image-crop';
 import type { AdjustmentLayout, AppSettings } from '../components/ui/AppProperties';
 import { v4 as uuidv4 } from 'uuid';
-import { SubMask, SubMaskMode } from '../components/panel/right/Masks';
+import { Mask, SubMask, SubMaskMode } from '../components/panel/right/Masks';
 
 export enum ActiveChannel {
   Blue = 'blue',
@@ -655,6 +655,8 @@ export const normalizeLoadedAdjustments = (loadedAdjustments: Adjustments): any 
       invert: false,
       opacity: 100,
       ...subMask,
+      // Keep legacy painted strokes editable after removal of the selection tool.
+      type: (subMask.type as string) === 'quick-selection' ? Mask.Brush : subMask.type,
     }));
   };
 

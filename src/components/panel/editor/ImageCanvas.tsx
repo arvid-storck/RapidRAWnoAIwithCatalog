@@ -1716,10 +1716,7 @@ const ImageCanvas = memo(
 
     const isBrushActive =
       (isMasking || isAiEditing) &&
-      (activeSubMask?.type === Mask.QuickSelection ||
-        activeSubMask?.type === Mask.Brush ||
-        activeSubMask?.type === Mask.Flow ||
-        isDirectPatchActive);
+      (activeSubMask?.type === Mask.Brush || activeSubMask?.type === Mask.Flow || isDirectPatchActive);
 
     const activeLineFlow = activeSubMask?.type === Mask.Flow ? (activeSubMask?.parameters?.flow ?? 10) : undefined;
 
@@ -2409,8 +2406,7 @@ const ImageCanvas = memo(
             tool: effectiveTool,
           };
           currentLine.current = newLine;
-          if (isCloneOrHealActive || activeSubMask?.type === Mask.QuickSelection)
-            liveStrokeRef.current?.points([pos.x, pos.y, pos.x + 0.01, pos.y]);
+          if (isCloneOrHealActive) liveStrokeRef.current?.points([pos.x, pos.y, pos.x + 0.01, pos.y]);
         } else {
           if (e.target === e.target.getStage()) {
             if (isMasking) {
@@ -2611,20 +2607,13 @@ const ImageCanvas = memo(
           // copied every point and restarted image processing on every event.
           const updatedLine = currentLine.current;
           updatedLine.points.push(pos);
-          if (isCloneOrHealActive || activeSubMask?.type === Mask.QuickSelection) {
+          if (isCloneOrHealActive) {
             const preview = liveStrokeRef.current;
             preview?.points(updatedLine.points.flatMap((point) => [point.x, point.y]));
             preview?.getLayer()?.batchDraw();
           }
 
-          if (
-            onLiveMaskPreview &&
-            activeContainer &&
-            activeSubMask &&
-            isBrushActive &&
-            !isCloneOrHealActive &&
-            activeSubMask.type !== Mask.QuickSelection
-          ) {
+          if (onLiveMaskPreview && activeContainer && activeSubMask && isBrushActive && !isCloneOrHealActive) {
             const { scale } = imageRenderSize;
 
             const imageSpaceLine: DrawnLine = {
@@ -2881,14 +2870,6 @@ const ImageCanvas = memo(
           parameters: {
             ...activeSubMask?.parameters,
             lines: existingLines,
-            ...(activeSubMask?.type === Mask.QuickSelection
-              ? {
-                  rotation: adjustments.rotation,
-                  orientationSteps: adjustments.orientationSteps,
-                  flipHorizontal: adjustments.flipHorizontal,
-                  flipVertical: adjustments.flipVertical,
-                }
-              : {}),
           },
         });
 

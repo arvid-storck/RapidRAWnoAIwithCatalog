@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Editor from '../panel/Editor';
+import PanelVisibilityMenu from '../panel/PanelVisibilityMenu';
 import BottomBar from '../panel/BottomBar';
 import Resizer from '../ui/Resizer';
 import { MobilePanelSwitcher } from '../panel/PanelSwitcher';
@@ -202,8 +203,11 @@ export default function EditorView({
     ) : null;
 
   return (
-    <div className={clsx('flex grow h-full min-h-0', layoutMode === 'compact' ? 'flex-col gap-2' : 'flex-col')}>
-      <div className={clsx('flex-1 flex flex-col min-w-0', layoutMode === 'compact' && 'min-h-0')}>{editorNode}</div>
+    <div
+      className={clsx('relative flex grow h-full min-h-0', layoutMode === 'compact' ? 'flex-col gap-2' : 'flex-col')}
+    >
+      <PanelVisibilityMenu />
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">{editorNode}</div>
       {uiVisibility.bottomPanel && (layoutMode === 'compact' ? editorMobilePanelNode : editorBottomBarNode)}
     </div>
   );

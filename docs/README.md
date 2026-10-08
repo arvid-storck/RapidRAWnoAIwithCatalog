@@ -3,7 +3,7 @@
 This is a maintainer's map of the current source tree. It covers hand-maintained
 application files; it does not enumerate third-party packages, generated build
 output, every image asset, or every translation key. Read this alongside the
-user-facing [root README](../README.md), which contains the change history.
+user-facing [root README](../README.md) and the separate [changelog](CHANGELOG.md).
 This document describes the current implementation, not its development history.
 
 ## Current editing implementation
@@ -62,27 +62,36 @@ Frontend session/generation guards discard stale picks when switching images/too
 Run `cargo test --lib white_balance` in `src-tauri` for numerical and area-sampling tests.
 Run `node scripts/test-white-balance.mjs` for frontend defaults, limits and slider scaling.
 
-### Quick Selection and brush interactions
+### Brush interactions
 
-Quick Selection is a manual mask type (`quick-selection`) in `Masks.tsx`.
-Paint inside an object, then release to refine the selection. The tolerance
-control adjusts allowed color variation; erasing subtracts a connected region.
-It is classic seeded color/contrast region growing, with no model or AI dependency.
+`ImageCanvas.tsx` keeps active Clone/Heal stroke points in local refs. A Konva
+line previews the unfinished stroke; release commits one sidecar mask update.
+Changing the image or active mask cancels an unfinished stroke. Normal Brush/Flow
+masks retain live previews. Image processing and thumbnail invalidation follow
+the normal adjustment path.
 
-`ImageCanvas.tsx` keeps active Clone/Heal/Quick Selection points in local refs.
-A Konva line shows the unfinished stroke; mouse/touch release commits one sidecar
-mask update. Changing the image or active mask cancels an unfinished stroke.
-Image processing and thumbnail invalidation follow the normal adjustment path.
-There is no direct-patch callback or per-pointer-motion Clone/Heal recomposition.
+Legacy `quick-selection` sidecar masks load as ordinary Brush masks, retaining
+their painted strokes, opacity and combination mode. The frontend normalizes
+the old type; native mask dispatch accepts it as a brush for direct sidecar loads.
+There is no selection-refinement implementation or associated UI. Old refined
+contours cannot be reproduced; they now use the stored brush shape.
+`node scripts/test-mask-compat.mjs` checks that frontend normalization preserves
+strokes, IDs, visibility, opacity and blend mode without mutating loaded data.
+The native `legacy_brush_tests` test verifies the same bitmap as an ordinary brush.
 
-`mask_generation.rs` samples the perspective-warped source into an oriented
-working grid capped at 1024 pixels on its longest edge. It grows four-connected
-regions from painted centerline seeds with color and local contrast tests,
-applies light edge feathering, and maps the result into the requested crop/scale.
-Stroke parameters carry tolerance, orientation, fine rotation and flips. The
-normal mask combination, opacity and cache paths also apply to Quick Selection.
-The resolution cap bounds work but fine hairs and very small edges may need
-manual brush refinement.
+### Workspace panel layout
+
+`LibraryView.tsx` and `EditorView.tsx` each own one `PanelVisibilityMenu` within
+their central workspace; it never belongs to the catalog's right filter column.
+`BottomBar.tsx` reserves space to the right of its action icons for this control,
+which stays accessible when the bottom bar is hidden. Import is available in the
+bottom bar and empty-library prompt, not the library header.
+
+The library's flex chain uses `min-h-0` and clips the grid to its allotted viewport.
+`LibraryGrid.tsx` gives react-window a 100%-height flex viewport instead of feeding
+the previously measured pixel height back into layout. Its ResizeObserver only
+tracks width for row layout. The bottom bar is non-shrinking and has its own
+stacking level, so toggling it does not leave thumbnails covering it.
 
 ### Catalog panels, paging and smart groups
 
@@ -273,10 +282,8 @@ are composited during image rendering without modifying the source file.
 | `components/panel/PanelVisibilityMenu.tsx` | Shows/hides top, bottom, side, and filmstrip panels. |
 | `components/panel/SidePanelArea.tsx` | Dockable/resizable editor side panels. |
 | `components/panel/library/CatalogFilterPanel.tsx` | Multi-select facets, smart-group draft/save controls and catalog-folder management. |
-| `components/panel/library/CullingView.tsx` | Library culling presentation. |
 | `components/panel/library/ImportChoiceMenu.tsx` | Import file/folder choice. |
 | `components/panel/library/LibraryGrid.tsx` | Image grid/list container and virtualization behavior. |
-| `components/panel/library/LibraryHeader.tsx` | Library search/sort/filter header controls. |
 | `components/panel/library/LibraryItems.tsx` | Individual thumbnail/list item rendering. |
 | `components/panel/editor/EditorToolbar.tsx` | Editor top toolbar actions and image information. |
 | `components/panel/editor/ExifIcons.tsx` | Reusable EXIF symbols. |
@@ -400,7 +407,7 @@ are composited during image rendering without modifying the source file.
 | `lens_blur.rs` | Lens/portrait blur processing. |
 | `lens_correction.rs` | Lensfun lookup and optical corrections. |
 | `lut_processing.rs` | LUT parsing/application. |
-| `mask_generation.rs` | Mask definitions/generation including bounded classic Quick Selection; legacy types remain for sidecar compatibility. |
+| `mask_generation.rs` | Mask definitions/generation with legacy type aliases for sidecar compatibility. |
 | `negative_conversion.rs` | Film-negative conversion. |
 | `panorama_stitching.rs` | Panorama commands and stitching workflow. |
 | `panorama_utils/mod.rs` | Panorama utility module exports. |
@@ -451,6 +458,16 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib
 
 Run `npm ci` first if dependencies were cleaned. Frontend build, TypeScript,
 translation validation and native tests are separate checks.
+
+The optimized debug profile disables incremental application codegen to avoid
+stale anonymous LLVM symbols in cross-crate `image_hasher` code when linking the
+Windows executable (`LNK2019` followed by `LNK1120`). Dependency artifacts remain
+cached; this does not change runtime optimization or the release profile.
+Do not override this with `CARGO_INCREMENTAL=1` when reproducing the linker issue.
+Native library tests do not verify all code pulled into the desktop executable:
+also run `cargo build --manifest-path src-tauri/Cargo.toml --bin RapidRAW` to
+check debug linking, and `npm run tauri -- build --no-bundle` to verify the
+production executable with its embedded frontend.
 
 The native app uses Windows/macOS/Linux icons referenced by Tauri and the
 Linux packaging icon. Desktop builds do not require mobile/scaffold icons or

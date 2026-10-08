@@ -80,9 +80,9 @@ export default function MainLibrary(props: MainLibraryProps) {
     { id: ThumbnailSize.Large, size: 320, label: t('catalog.large') },
   ];
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-bg-secondary rounded-lg">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-bg-secondary rounded-lg">
       {showTopPanel && (
-        <header className="flex items-center gap-2 p-3 border-b border-surface">
+        <header className="shrink-0 flex items-center gap-2 p-3 border-b border-surface">
           <div className="flex items-center gap-1" aria-label={t('catalog.pages')}>
             <button
               type="button"
@@ -165,7 +165,6 @@ export default function MainLibrary(props: MainLibraryProps) {
             <option value={ThumbnailAspectRatio.Contain}>{t('catalog.originalRatio')}</option>
             <option value={ThumbnailAspectRatio.Cover}>{t('catalog.fillSquare')}</option>
           </select>
-          <ImportChoiceMenu onFiles={props.onImportClick} onFolder={props.onOpenFolder} />
           <Button onClick={() => setUI({ isSettingsOpen: true })} data-tooltip={t('settings.title')}>
             <Settings size={18} />
           </Button>

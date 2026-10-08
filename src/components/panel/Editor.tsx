@@ -699,12 +699,7 @@ export default function Editor({ onBackToLibrary, onContextMenu, onImageSelect, 
   }, [adjustments.masks, adjustments.aiPatches, activeMaskId, activeAiSubMaskId, isMasking, isAiEditing]);
 
   const isBrushActive = useMemo(() => {
-    return (
-      (isMasking || isAiEditing) &&
-      (activeSubMask?.type === Mask.QuickSelection ||
-        activeSubMask?.type === Mask.Brush ||
-        activeSubMask?.type === Mask.Flow)
-    );
+    return (isMasking || isAiEditing) && (activeSubMask?.type === Mask.Brush || activeSubMask?.type === Mask.Flow);
   }, [isMasking, isAiEditing, activeSubMask?.type]);
 
   const isPanningDisabled =
@@ -712,8 +707,7 @@ export default function Editor({ onBackToLibrary, onContextMenu, onImageSelect, 
     isMaskTouchInteracting ||
     isCropping ||
     (isMasking &&
-      (activeSubMask?.type === Mask.QuickSelection ||
-        activeSubMask?.type === Mask.Brush ||
+      (activeSubMask?.type === Mask.Brush ||
         activeSubMask?.type === Mask.Flow ||
         activeSubMask?.type === Mask.Clone ||
         activeSubMask?.type === Mask.Heal ||
@@ -722,8 +716,7 @@ export default function Editor({ onBackToLibrary, onContextMenu, onImageSelect, 
         activeSubMask?.type === Mask.Luminance ||
         activeSubMask?.parameters?.isInitialDraw)) ||
     (isAiEditing &&
-      (activeSubMask?.type === Mask.QuickSelection ||
-        activeSubMask?.type === Mask.Brush ||
+      (activeSubMask?.type === Mask.Brush ||
         activeSubMask?.type === Mask.Flow ||
         activeSubMask?.type === Mask.Clone ||
         activeSubMask?.type === Mask.Liquify ||

@@ -40,14 +40,14 @@ export default function PanelVisibilityMenu() {
   }, [open]);
 
   return (
-    <div ref={container} className="absolute bottom-2 right-0 z-40">
+    <div ref={container} className="absolute bottom-2 right-1 z-40">
       <button
         type="button"
         aria-label={t('workspace.panels.toggle')}
         title={t('workspace.panels.toggle')}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="rounded-l-md border border-r-0 border-border-color bg-surface p-1.5 text-text-primary shadow-md hover:bg-card-active"
+        className="rounded-md border border-border-color bg-surface p-1.5 text-text-primary shadow-md hover:bg-card-active"
         onClick={() => setOpen((value) => !value)}
       >
         <SlidersHorizontal size={16} />

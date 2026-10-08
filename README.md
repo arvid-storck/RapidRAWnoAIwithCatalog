@@ -230,29 +230,6 @@ Create a portable Windows ZIP with:
 ./scripts/build-portable.ps1 -OutputDirectory portable-artifacts
 ```
 
-The script builds the Tauri release executable and packages the application resources. RAW support is built into the executable, so users do not need to install a separate engine or Rust toolchain.
-
-Distribute the portable ZIP, not the whole project or `target` directory. Debug symbols, compiler caches and npm dependencies are not needed by users. The script reports the EXE, unpacked folder and ZIP sizes, and excludes other platforms' ONNX runtimes from the Windows package. Noise reduction's Windows runtime remains included.
-
-Keep `portable.flag` with the EXE. It tells RapidRAW to keep persistent program data in the portable installation.
-
-The portable installation can contain:
-
-* settings
-* albums
-* custom LUTs
-* downloaded models
-* the rebuildable `rapidraw.db` catalog
-* updated components
-
-Original photos and sidecars are not copied into the portable package and must remain accessible at their existing filesystem paths.
-
-The build script refuses to overwrite an existing portable output folder because it may contain user data.
-
-A plain `cargo build --release` is not a replacement for the Tauri build because it does not embed the production frontend.
-
-
-
 ## Catalog
 
 Browse, search and filter your local photos, and organize them in albums and smart groups. Original files remain at their existing locations. Removing an entry from the catalog does not delete its source file, and the internal index can be rebuilt.
@@ -276,48 +253,6 @@ RapidRAW is designed to remain lightweight while making extensive use of GPU acc
 * **Windows:** Windows 10 or newer
 * **macOS:** macOS 13 (Ventura) or newer
 * **Linux:** Ubuntu 22.04+ or a compatible modern distribution
-
-### Hardware Recommendations
-
-* **RAM:** 16GB or more is recommended, particularly for large RAW files and large catalogs.
-* **GPU:** A dedicated GPU is recommended.
-* Older GPU architectures may have reduced performance or compatibility depending on the selected backend.
-
-### Common Problems
-
-<details>
-<summary>App crashes when opening an image / entering edit mode</summary>
-
-If the application crashes when entering the editor, it may be related to automatic GPU backend selection.
-
-1. Open **Settings**.
-2. Navigate to **Processing**.
-3. Locate **Processing Backend**.
-4. Change **Auto** to a specific supported backend such as **Vulkan**, **DirectX12**, **OpenGL**, or **Metal**.
-5. Restart the application.
-
-</details>
-
-<details>
-<summary>Linux Wayland / WebKit Crash</summary>
-
-On some Linux Wayland systems, especially certain NVIDIA configurations, try:
-
-```bash
-WEBKIT_DISABLE_DMABUF_RENDERER=1 RapidRAW
-```
-
-or:
-
-```bash
-WEBKIT_DISABLE_COMPOSITING_MODE=1 RapidRAW
-```
-
-This issue is related to WebKit and graphics-driver behavior.
-
-See the upstream [#306](https://github.com/CyberTimon/RapidRAW/issues/306) for additional background.
-
-</details>
 
 ## Maintainer Documentation
 

@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 
+import PanelVisibilityMenu from '../panel/PanelVisibilityMenu';
 import MainLibrary from '../panel/MainLibrary';
 import BottomBar from '../panel/BottomBar';
 
@@ -101,7 +102,8 @@ export default function LibraryView({
 
   return (
     <div className="flex flex-row grow h-full min-h-0">
-      <div className="flex-1 flex flex-col min-w-0 gap-2">
+      <div className="relative flex-1 flex flex-col min-w-0 min-h-0 gap-2">
+        <PanelVisibilityMenu />
         <MainLibrary
           activePath={libraryActivePath}
           appSettings={appSettings}

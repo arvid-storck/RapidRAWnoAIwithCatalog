@@ -298,7 +298,7 @@ export default function BottomBar({
   };
 
   return (
-    <div className="shrink-0 bg-bg-secondary rounded-lg flex flex-col">
+    <div className="relative z-10 shrink-0 bg-bg-secondary rounded-lg flex flex-col">
       {!isLibraryView && showFilmstrip && (
         <div
           className={clsx(
@@ -334,7 +334,7 @@ export default function BottomBar({
 
       <div
         className={clsx(
-          'shrink-0 h-12 flex items-center justify-between px-3',
+          'shrink-0 h-12 flex items-center justify-between pl-3 pr-12',
           !isLibraryView && 'border-t transition-colors duration-300',
           !isLibraryView && showFilmstrip && isFilmstripVisible ? 'border-surface' : 'border-transparent',
         )}

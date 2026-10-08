@@ -4,7 +4,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { RawStatus, EditedStatus, SortDirection, ImageFile, GroupingMode } from '../components/ui/AppProperties';
 import { buildImageGroups, GroupBadgeInfo, GroupId } from '../utils/imageGrouping';
 
-export const ADVANCED_QUERY_REGEX =
+const ADVANCED_QUERY_REGEX =
   /^(iso|aperture|f|shutter|s|focal|mm|rating|color|camera|make|model|lens)\s*(?::)?\s*(>=|<=|>|<|=)?\s*(.+)$/i;
 
 const parseShutter = (val: string | undefined): number => {

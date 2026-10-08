@@ -93,10 +93,6 @@ const SUB_MASK_CONFIG: Partial<Record<Mask, any>> = {
     parameters: [{ key: 'feather', min: 0, max: 100, step: 1, multiplier: 100, defaultValue: 50 }],
   },
   [Mask.Brush]: { showBrushTools: true },
-  [Mask.QuickSelection]: {
-    showBrushTools: true,
-    parameters: [{ key: 'tolerance', min: 1, max: 100, step: 1, defaultValue: 20 }],
-  },
   [Mask.Clone]: { showBrushTools: true },
   [Mask.Heal]: { showBrushTools: true },
   [Mask.Flow]: { showBrushTools: true, showFlowControl: true },
@@ -499,13 +495,7 @@ export default function MasksPanel() {
     onSelectContainer(newContainer.id);
     onSelectMask(subMask.id);
     setExpandedContainers((prev) => new Set(prev).add(newContainer.id));
-    if (
-      type === Mask.QuickSelection ||
-      type === Mask.Brush ||
-      type === Mask.Flow ||
-      type === Mask.Clone ||
-      type === Mask.Heal
-    )
+    if (type === Mask.Brush || type === Mask.Flow || type === Mask.Clone || type === Mask.Heal)
       selectBrushToolForNewMask();
   };
 
@@ -534,13 +524,7 @@ export default function MasksPanel() {
     onSelectContainer(containerId);
     onSelectMask(subMask.id);
     setExpandedContainers((prev) => new Set(prev).add(containerId));
-    if (
-      type === Mask.QuickSelection ||
-      type === Mask.Brush ||
-      type === Mask.Flow ||
-      type === Mask.Clone ||
-      type === Mask.Heal
-    )
+    if (type === Mask.Brush || type === Mask.Flow || type === Mask.Clone || type === Mask.Heal)
       selectBrushToolForNewMask();
   };
 
@@ -2095,7 +2079,7 @@ function SettingsPanel({
                   max={param.max}
                   step={param.step}
                   defaultValue={param.defaultValue}
-                  value={(activeSubMask.parameters[param.key] || 0) * (param.multiplier || 1)}
+                  value={(activeSubMask.parameters[param.key] ?? param.defaultValue ?? 0) * (param.multiplier || 1)}
                   onChange={(e: any) =>
                     handleSubMaskParametersChange({ [param.key]: parseFloat(e.target.value) / (param.multiplier || 1) })
                   }
@@ -2104,11 +2088,6 @@ function SettingsPanel({
                 />
               ))}
 
-              {activeSubMask.type === Mask.QuickSelection && (
-                <Text as="div" variant={TextVariants.small} className="text-text-secondary">
-                  {t('editor.masks.quickSelectionHelp')}
-                </Text>
-              )}
               {subMaskConfig.showBrushTools &&
                 brushSettings &&
                 (activeSubMask.type === Mask.Flow ? (
