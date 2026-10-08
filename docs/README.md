@@ -441,6 +441,17 @@ directly in memory without external processes or temporary images.
 `multi_exposure.rs` and `highlight_recovery.rs` provide additional processing.
 Linear RAW Processing and Highlight Recovery are persisted in `app_settings.rs`.
 
+## Push to github
+
+git init
+git remote add origin https://github.com/arvid-storck/RapidRAWnoAIwithCatalog.git
+git fetch origin
+git reset --mixed origin/main
+git branch -M main
+git add -A
+git commit -m "Text här"
+git push -u origin main
+
 ## Development checks
 
 ```powershell
