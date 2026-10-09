@@ -1418,10 +1418,6 @@
       "clearThumbnail": "Clear Thumbnail Cache",
       "clearThumbnailButton": "Clear",
       "clearThumbnailDesc": "This will delete all cached thumbnail images. They will be regenerated automatically as you browse your library.",
-      "loading": "Loading...",
-      "logs": "View Application Logs",
-      "logsButton": "Open",
-      "logsDesc": "View the application's log file for troubleshooting. The log is located at:",
       "modals": {
         "aiMessage": "Are you sure you want to remove all AI-generated tags from all images in all active root folders?\n\nThis will not affect user-added tags. This action cannot be undone.",
         "allMessage": "Are you sure you want to remove all AI-generated and user-added tags from all images in all active root folders?\n\nThis action cannot be undone.",
@@ -1456,7 +1452,6 @@
         "clearingAll": "Clearing all tags from sidecar files...",
         "clearingCache": "Clearing thumbnail cache...",
         "deleting": "Deleting sidecar files, please wait...",
-        "failedToGetPath": "Could not retrieve log file path.",
         "layoutResetSuccess": "Workspace layout reset to default.",
         "processing": "Processing...",
         "resettingLayout": "Resetting workspace...",

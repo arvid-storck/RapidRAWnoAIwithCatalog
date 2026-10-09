@@ -1,10 +1,19 @@
 # RapidRAW code map
 
 This is a maintainer's map of the current source tree. It covers hand-maintained
-application files; it does not enumerate third-party packages, generated build
-output, every image asset, or every translation key. Read this alongside the
+application files and their responsibilities. Read this alongside the
 user-facing [root README](../README.md) and the separate [changelog](CHANGELOG.md).
-This document describes the current implementation, not its development history.
+This document describes the current implementation.
+
+## Runtime diagnostics
+
+`logging.rs` sends native debug diagnostics to stderr. `RUST_LOG` selects a single
+log level. Release builds, including portable distributions, use
+`release_max_level_off` to compile out native log calls. `main.tsx` assigns silent
+console methods in the production frontend.
+
+Run `node scripts/test-logging.mjs` to check production console suppression,
+debug console availability and diagnostic configuration.
 
 ## Current editing implementation
 
@@ -17,7 +26,7 @@ The composition guide is Rule of Thirds; `O` toggles it on/off.
 selected images. The bottom bar has toggles; thumbnails/list/filmstrip show badges
 and dim rejects. Catalog flag filters combine with metadata filters and smart groups.
 Flags are mutually exclusive internal `flag:pick`/`flag:reject` sidecar tags; SQLite
-rebuilds the flag column from those tags. Flagging does not delete a source file.
+rebuilds the flag column from those tags. Flagging updates sidecar metadata and the catalog index.
 `node scripts/test-image-flags.mjs` checks selection scope, queued writes, toggling,
 clear, pending-page overlays and error rollback with in-memory stores/IPC only.
 
@@ -25,8 +34,8 @@ clear, pending-page overlays and error rollback with in-memory stores/IPC only.
 
 Adjustment panel customization is accessible in Settings → Customization only. Drag handles reorder sections and tool groups; eye buttons hide them.
 Section/tool collapse state and layout are saved in `adjustmentLayout`. Hiding a
-control does not bypass its processing; the existing section enable/disable control
-remains separate. Startup migrates saved `adjustmentVisibility` preferences into
+control changes its UI visibility; section enable/disable controls govern processing.
+Startup migrates saved `adjustmentVisibility` preferences into
 the current layout when `adjustmentLayout` is absent.
 Shift/Alt slows curve dragging to one fifth; inactive channels show colored curves
 and parametric reference markers.
@@ -37,16 +46,15 @@ Guided-filter coefficients are built from log luminance/dark-channel statistics 
 bounded resolution, cached with the GPU input, and sampled across render tiles.
 Clarity, structure, dehaze and tonal detail recovery use them in preview and export.
 Gaussian blur serves sharpening/glow/halation where needed. JPEG/PNG
-encoders embed the bundled CC0 sRGB profile even when EXIF preservation is off;
-other export formats do not embed ICC profiles. Thumbnail disk cache
-keys include the renderer revision; mismatched renders are regenerated on demand.
+encoders embed the bundled CC0 sRGB profile independently of EXIF preservation.
+Thumbnail disk cache keys include the renderer revision; mismatched renders are
+regenerated on demand.
 
 ### Kelvin white balance and area sampling
 
 White balance uses a `whiteBalance: { temperature, tint }` adjustment
-object (or `null` for camera/default balance), including masks. Standalone relative
-`temperature`/`tint` fields are ignored by the renderer and discarded by frontend
-adjustment normalization; they are not converted to Kelvin. `src/utils/whiteBalance.ts`
+object (or `null` for camera/default balance), including masks. Frontend adjustment
+normalization retains this object as the white-balance input. `src/utils/whiteBalance.ts`
 defines UI limits and logarithmic Kelvin slider scaling. `Color.tsx` displays Kelvin
 and tint; `ImageCanvas.tsx` maps clicked/dragged regions through crop, orientation,
 flips and perspective into original-image coordinates.
@@ -54,7 +62,7 @@ flips and perspective into original-image coordinates.
 `src-tauri/src/white_balance.rs` converts camera matrices/neutral coefficients into
 as-shot Kelvin/tint and computes Bradford LMS adaptation. Its bounded metadata cache
 is keyed by path, modification time and file length. `raw_processing.rs` reads the
-camera white without developing another image. `LoadedImage` carries the reference
+camera white from RAW metadata. `LoadedImage` carries the reference
 white through preview, thumbnails and export. The `sample_white_balance` command
 checks the requested image path, averages linear original pixels in a quadrilateral
 on a blocking worker, and caps work at 262144 samples. It rejects invalid/dark samples.
@@ -73,32 +81,30 @@ the normal adjustment path.
 Legacy `quick-selection` sidecar masks load as ordinary Brush masks, retaining
 their painted strokes, opacity and combination mode. The frontend normalizes
 the old type; native mask dispatch accepts it as a brush for direct sidecar loads.
-There is no selection-refinement implementation or associated UI. Old refined
-contours cannot be reproduced; they now use the stored brush shape.
+The resulting bitmap uses the stored brush shape.
 `node scripts/test-mask-compat.mjs` checks that frontend normalization preserves
-strokes, IDs, visibility, opacity and blend mode without mutating loaded data.
+strokes, IDs, visibility, opacity and blend mode while preserving the loaded object.
 The native `legacy_brush_tests` test verifies the same bitmap as an ordinary brush.
 
 ### Workspace panel layout
 
 `LibraryView.tsx` and `EditorView.tsx` each own one `PanelVisibilityMenu` within
-their central workspace; it never belongs to the catalog's right filter column.
+their central workspace.
 `BottomBar.tsx` reserves space to the right of its action icons for this control,
 which stays accessible when the bottom bar is hidden. Import is available in the
-bottom bar and empty-library prompt, not the library header.
+bottom bar and empty-library prompt.
 
 The library's flex chain uses `min-h-0` and clips the grid to its allotted viewport.
-`LibraryGrid.tsx` gives react-window a 100%-height flex viewport instead of feeding
-the previously measured pixel height back into layout. Its ResizeObserver only
-tracks width for row layout. The bottom bar is non-shrinking and has its own
-stacking level, so toggling it does not leave thumbnails covering it.
+`LibraryGrid.tsx` gives react-window a 100%-height flex viewport. Its ResizeObserver
+tracks width for row layout. The bottom bar retains its height and uses a separate
+stacking level to remain visible above the thumbnail grid.
 
 ### Catalog panels, paging and smart groups
 
 `CatalogPanel.tsx` renders capture-date years/months/days and the recursive album
 hierarchy. Groups use persisted `expandedAlbumGroups`; creating a group expands
 it and its parent. The saved panel ID `folderTree` is retained only as a workspace
-compatibility identifier for `Panel.Catalog`, not a filesystem browser.
+compatibility identifier for `Panel.Catalog`.
 
 `useCatalog.ts`, mounted by App, initializes and loads the catalog independently
 of panel visibility. Search is debounced and stale query replies are discarded.
@@ -106,17 +112,17 @@ of panel visibility. Search is debounced and stale query replies are discarded.
 read transaction. The shared filter builder ensures the page and count match;
 the header shows page X of Y, match count and catalog total. Empty results show
 page 1 of 1. When results shrink, an out-of-range page is clamped and reloaded.
-Ordinary albums do not expose catalog page navigation.
+Catalog mode owns the page-navigation controls.
 
 Right-click a smart group → Edit filters opens the filter panel and loads its
-criteria into a draft. Saving updates that group's ID in the existing hierarchy
-instead of creating another group. Cancel editing leaves the stored group
+criteria into a draft. Saving updates that group's ID in the existing hierarchy.
+Cancel editing leaves the stored group
 unchanged. Legacy single-value filters are normalized by `normalizeCatalogFilter`;
-`updateSmartGroup` updates nested smart groups without changing their placement.
+`updateSmartGroup` updates nested smart groups in their existing positions.
 
-The header has no Refresh button. Catalog folders → Rescan folders incrementally
-checks disk changes; internal refreshes only reload index/facet data. GUI export
-and external editor round trips remain; there is no headless batch-export command.
+Catalog folders → Rescan folders incrementally checks disk changes; internal
+refreshes reload index/facet data. The export panel handles GUI export, and external
+edit sessions coordinate round trips with other editors.
 
 ## Application overview
 
@@ -147,9 +153,8 @@ I/O, image decoding/rendering, export, and the SQLite catalog. Shared command
 names and frontend data contracts live in `src/components/ui/AppProperties.tsx`;
 Tauri command registration is near the end of `src-tauri/src/lib.rs`.
 
-The catalog database is a rebuildable index, not the source of the photos or
-edits. Photos stay at their paths, and sidecar/XMP data remains separate. The
-catalog view queries bounded pages instead of loading every RAW file.
+The catalog database is a rebuildable index. Photos stay at their paths, and
+sidecar/XMP files store edits and metadata. The catalog view queries bounded pages.
 
 Thumbnail requests and caches are bounded. Removing a catalog entry is separate
 from deleting its source file. File operations synchronize the catalog index.
@@ -158,13 +163,12 @@ See [catalog-focused-build.md](catalog-focused-build.md) for query/loading detai
 Catalog filters are combined in SQLite, while
 `src/utils/catalog.ts` retains the active image's optimistic rating when a new
 rating removes it from the filtered page. Opening a video catalog entry launches
-the system player; videos do not enter the image editor or thumbnail decoder.
+the system player.
 RAW development has one path: `raw_processing.rs` uses the linked rawler crate
-and hands pixels to `image_loader.rs` in memory. No external RAW component or
-temporary transfer image is involved. `highlight_recovery.rs` applies the
+and hands pixels to `image_loader.rs` in memory. `highlight_recovery.rs` applies the
 user setting after development; Linear RAW Processing is controlled by the
 persistent `linear_raw_mode` setting. Clone/Heal strokes live in sidecar mask adjustments and
-are composited during image rendering without modifying the source file.
+are composited during image rendering; the source image remains intact.
 
 ## Where to edit common features
 
@@ -207,17 +211,17 @@ are composited during image rendering without modifying the source file.
 | `src-tauri/icons/` | App icons. |
 | `src-tauri/lensfun_db/` | Bundled lens profiles; separately updatable at runtime. |
 | `src-tauri/resources/` | Bundled runtime resources, LUTs, licenses, and native libraries. |
-| `public/` | Optional static assets copied by Vite; currently empty. No splash-image assets are required. |
-| `data/` | Linux desktop entry and AppStream metadata; not the user's catalog database. |
+| `data/` | Linux desktop entry and AppStream metadata. |
 | `packaging/` | Linux/Flatpak and dependency-source packaging metadata. |
 
 ### Scripts and existing docs
 
 | File | Responsibility |
 | --- | --- |
-| `scripts/build-portable.ps1` | Builds and packages a portable Windows ZIP without overwriting an existing output folder. |
+| `scripts/build-portable.ps1` | Builds and packages a portable Windows ZIP in a fresh output folder. |
 | `scripts/clean.mjs` | Removes explicit generated build paths; `--dependencies` also removes node_modules and downloaded ONNX runtime files, with project-boundary and symlink checks. |
 | `scripts/test-catalog.mjs` | In-memory catalog paging/count/stale-reply, smart-filter editing and album-group creation checks. |
+| `scripts/test-logging.mjs` | Production console suppression, debug console availability and diagnostic configuration checks. |
 | `scripts/test-image-flags.mjs` | In-memory flag selection, write queue and rollback regression checks. |
 | `scripts/test-white-balance.mjs` | Frontend white-balance defaults, bounds and Kelvin slider scaling checks. |
 | `docs/README.md` | Source-file map and technical overview (this document). |
@@ -229,7 +233,7 @@ are composited during image rendering without modifying the source file.
 
 | File | Responsibility |
 | --- | --- |
-| `main.tsx` | Starts React and installs the frontend log bridge. |
+| `main.tsx` | Starts React; disables browser console output in production builds. |
 | `App.tsx` | Composes the application shell, views, global panels, events, and interactions. |
 | `styles.css` | Global styles and theme-related CSS. |
 | `window/TitleBar.tsx` | Custom window title bar. |
@@ -240,7 +244,7 @@ are composited during image rendering without modifying the source file.
 | `store/useUIStore.ts` | Active view, panel layout/visibility, dialogs, UI state; discards unsupported panel identifiers from saved layouts. |
 | `components/views/LibraryView.tsx` | Library/catalog layout, grid, bottom bar, filter panel. |
 | `components/views/EditorView.tsx` | Editor layout, side panels, toolbar, filmstrip. |
-| `components/managers/ImageLoaderManager.tsx` | Mounts the image-loading hook without rendering UI. |
+| `components/managers/ImageLoaderManager.tsx` | Mounts the image-loading hook. |
 | `components/managers/ImageProcessingManager.tsx` | Mounts the image-processing hook and passes render job refs. |
 | `context/ContextMenuContext.tsx` | Context-menu provider and menu actions. |
 | `context/TaggingSubMenu.tsx` | Tag actions inside image context menus. |
@@ -352,12 +356,11 @@ are composited during image rendering without modifying the source file.
 | `utils/catalog.ts` | Catalog IPC helpers, page loading, refresh, request handling, and preserving the edited image's visible rating when it leaves an active filter. |
 | `utils/CollageVariants.tsx` | Collage layout definitions/icons. |
 | `utils/cropUtils.ts` | Crop geometry helpers. |
-| `utils/frontendLogBridge.ts` | Forwards frontend errors/logs into application logging. |
 | `utils/imageGrouping.ts` | Grouping related images and expanding group selections. |
 | `utils/ImageLRUCache.ts` | Frontend image LRU cache. |
 | `utils/keyboardUtils.ts` | Shortcut definitions, parsing, and normalization. |
 | `utils/maskUtils.ts` | Mask conversion and helper functions. |
-| `utils/mediaTypes.ts` | Frontend video-path recognition used to keep videos out of the image editor and thumbnail pipeline. |
+| `utils/mediaTypes.ts` | Recognizes video paths for frontend media dispatch. |
 | `utils/themes.ts` | Theme definitions. |
 | `utils/zoom.ts` | Zoom constants and constraints. |
 | `utils/whiteBalance.ts` | Kelvin/tint types and limits, default resolution and logarithmic temperature slider scaling. |
@@ -368,7 +371,7 @@ are composited during image rendering without modifying the source file.
 | --- | --- |
 | `i18n/index.ts` | Initializes i18next and registers locale bundles. |
 | `i18n/check-runtime.mjs` | Checks translation keys used at runtime. |
-| `i18n/update_translations.py` | Legacy one-off script for zoom-click strings; skips absent locale files. Prefer the npm extraction/check commands for current maintenance. |
+| `i18n/update_translations.py` | Updates zoom-click strings in existing locale files. |
 | `i18n/locales/en.json` | English source strings. |
 | `@types/i18next.d.ts` | TypeScript declarations for translation keys. |
 
@@ -403,9 +406,10 @@ are composited during image rendering without modifying the source file.
 | `white_balance.rs` | Camera white-balance metadata, Kelvin/tint conversion, cached references and Bradford adaptation. |
 | `multi_exposure.rs` | Canon in-camera multi-exposure white-balance handling used by RAW development. |
 | `image_processing.rs` | Core adjustment pipeline, geometry, color, masks, histogram/waveform data. |
-| `launch_request.rs` | File/open and external editor round-trip requests; no CLI batch export. |
+| `launch_request.rs` | File/open and external editor round-trip requests. |
 | `lens_blur.rs` | Lens/portrait blur processing. |
 | `lens_correction.rs` | Lensfun lookup and optical corrections. |
+| `logging.rs` | Sends debug diagnostics to stderr with the configured log level. |
 | `lut_processing.rs` | LUT parsing/application. |
 | `mask_generation.rs` | Mask definitions/generation with legacy type aliases for sidecar compatibility. |
 | `negative_conversion.rs` | Film-negative conversion. |
@@ -437,7 +441,7 @@ cargo update --manifest-path src-tauri/Cargo.toml -p rawler
 revision. Keep the updated lockfile. Rebuild RapidRAW normally afterward.
 If upstream changes its API, adapt `raw_processing.rs` (development/orientation)
 and `exif_processing.rs` (metadata). `image_loader.rs` receives decoded pixels
-directly in memory without external processes or temporary images.
+directly in memory.
 `multi_exposure.rs` and `highlight_recovery.rs` provide additional processing.
 Linear RAW Processing and Highlight Recovery are persisted in `app_settings.rs`.
 
@@ -475,49 +479,40 @@ translation validation and native tests are separate checks.
 The optimized debug profile disables incremental application codegen to avoid
 stale anonymous LLVM symbols in cross-crate `image_hasher` code when linking the
 Windows executable (`LNK2019` followed by `LNK1120`). Dependency artifacts remain
-cached; this does not change runtime optimization or the release profile.
-Do not override this with `CARGO_INCREMENTAL=1` when reproducing the linker issue.
-Native library tests do not verify all code pulled into the desktop executable:
-also run `cargo build --manifest-path src-tauri/Cargo.toml --bin RapidRAW` to
+cached. Keep `CARGO_INCREMENTAL=0` when reproducing the linker issue.
+Native library tests verify the library's test cases. Run
+`cargo build --manifest-path src-tauri/Cargo.toml --bin RapidRAW` to
 check debug linking, and `npm run tauri -- build --no-bundle` to verify the
 production executable with its embedded frontend.
 
 The native app uses Windows/macOS/Linux icons referenced by Tauri and the
-Linux packaging icon. Desktop builds do not require mobile/scaffold icons or
-libgphoto2. Existing user preset files are independent of application source files.
+Linux packaging icon.
 
 ### Dependency and distribution size
 
-- Shell and filesystem plugins are not registered: application file/process
-  operations run in Rust. `tauri-plugin-fs` still arrives transitively through
+- Application file/process operations run in Rust. `tauri-plugin-fs` arrives transitively through
   the dialog plugin, whose filesystem scope integration is optional.
 - Frontend icons use Lucide. Process/file operations use native Rust commands;
-  futures crates are transitive dependencies rather than a direct dependency.
+  futures crates arrive as transitive dependencies.
 - Tokio explicitly requests its multithreaded runtime, synchronization and
   timers. Networking features needed by HTTPS dependencies remain transitive.
-- Imageproc enables Rayon without text rendering or FFT hashing.
+- Imageproc enables Rayon for parallel image processing.
   Separate image hashing and supported codecs have their own dependencies.
-- Sysinfo retains disk and system/memory queries, but not unused user, network
-  and component sensors. Reqwest retains JSON/HTTPS but not unused multipart.
+- Sysinfo enables disk and system/memory queries. Reqwest enables JSON/HTTPS.
 - ORT uses the verified ONNX runtime supplied by `build.rs`; its
-  automatic binary download/copy features are disabled. Standard, ndarray and
-  tracing support remain. The runtime-load regression test checks the native
-  library can still initialize without downloading the denoising model.
+  enabled features provide standard-library, ndarray and tracing support.
+  The runtime-load regression test checks native library initialization.
 - Release uses speed optimization, LTO and symbol stripping, with unwinding
   retained for panics.
-- Portable packaging excludes Linux/macOS ONNX runtimes from the Windows ZIP
-  while preserving other resources/licenses. It reports EXE, folder and ZIP
-  sizes. Compiler caches, npm dependencies, `.pdb` and `.rlib` files are not
-  included in the portable package.
+- Portable Windows packaging includes the EXE, Windows ONNX runtime and
+  application resources/licenses. It reports EXE, folder and ZIP sizes.
 
-`npm run clean` removes build caches, not application functionality. It does
-not make an existing EXE smaller. Export portable output before cleaning;
-use a fresh output directory rather than overwriting portable user data.
+`npm run clean` removes generated build caches. Export portable output before
+cleaning, and use a fresh output directory for portable builds.
 `npm run clean:deep` adds `node_modules` and the explicit runtime files
 `src-tauri/resources/onnxruntime.dll`, `libonnxruntime.so` and
-`libonnxruntime.dylib` to cleanup. It leaves other resources and reference folders
-untouched. `build.rs` downloads the required platform runtime if it is absent.
-Both commands support `-- --dry-run` to list existing cleanup targets without deletion.
+`libonnxruntime.dylib` to cleanup. `build.rs` downloads the required platform
+runtime when needed. Both commands support `-- --dry-run` to preview cleanup targets.
 
 Package sizes depend on the toolchain, dependency versions and bundled resources.
 Use the portable script's size report for the build being distributed.

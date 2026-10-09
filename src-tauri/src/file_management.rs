@@ -2595,7 +2595,7 @@ pub async fn apply_auto_adjustments_to_paths(
                 }
                 Ok(image)
             })()
-            .map_err(|e| eprintln!("Failed to apply auto adjustments to {}: {}", path, e))
+            .map_err(|e| log::error!("Failed to apply auto adjustments to {}: {}", path, e))
             .ok();
 
             let result = generate_single_thumbnail_and_cache(
@@ -2735,7 +2735,7 @@ pub fn clear_all_sidecars(root_path: String) -> Result<usize, String> {
             if fs::remove_file(path).is_ok() {
                 deleted_count += 1;
             } else {
-                eprintln!("Failed to delete sidecar file: {:?}", path);
+                log::error!("Failed to delete sidecar file: {:?}", path);
             }
         }
     }
@@ -3263,7 +3263,7 @@ pub async fn import_files(
                     log::info!("Skipping existing import {}: {}", source_path_str, e);
                 } else {
                     failed += 1;
-                    eprintln!("Failed to import {}: {}", source_path_str, e);
+                    log::error!("Failed to import {}: {}", source_path_str, e);
                     let _ = app_handle.emit("import-error", e);
                 }
                 continue;

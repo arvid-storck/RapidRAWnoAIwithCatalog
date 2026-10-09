@@ -72,7 +72,7 @@ pub fn add_tag_for_paths(
                 tags.push(tag_clone.clone());
             }
         }) {
-            eprintln!("Failed to add tag to {}: {}", path, e);
+            log::error!("Failed to add tag to {}: {}", path, e);
         }
     });
     Ok(())
@@ -89,7 +89,7 @@ pub fn remove_tag_for_paths(
         if let Err(e) = modify_tags_for_path(path, &app_handle, |tags| {
             tags.retain(|t| t != &tag_clone);
         }) {
-            eprintln!("Failed to remove tag from {}: {}", path, e);
+            log::error!("Failed to remove tag from {}: {}", path, e);
         }
     });
     Ok(())

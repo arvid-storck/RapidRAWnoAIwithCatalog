@@ -28,6 +28,8 @@ mod image_processing;
 mod launch_request;
 mod lens_blur;
 mod lens_correction;
+#[cfg(debug_assertions)]
+mod logging;
 mod lut_processing;
 mod mask_generation;
 mod multi_exposure;
@@ -41,10 +43,13 @@ mod tagging;
 mod white_balance;
 mod window_customizer;
 
+// Fail a release build if dependency features ever re-enable native log calls.
+#[cfg(not(debug_assertions))]
+const _: () = assert!(matches!(log::STATIC_MAX_LEVEL, log::LevelFilter::Off));
+
 use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
-use std::panic;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -1119,110 +1124,6 @@ async fn generate_preview_for_path(
     .map_err(|e| format!("Task execution failed: {}", e))?
 }
 
-fn setup_logging(app_handle: &tauri::AppHandle) {
-    let log_dir = match app_handle.path().app_log_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            eprintln!("Failed to get app log directory: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = fs::create_dir_all(&log_dir) {
-        eprintln!("Failed to create log directory at {:?}: {}", log_dir, e);
-    }
-
-    let log_file_path = log_dir.join("app.log");
-
-    let log_file = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&log_file_path)
-        .ok();
-
-    let var = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    let level: log::LevelFilter = var.parse().unwrap_or(log::LevelFilter::Info);
-
-    let mut dispatch = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stderr());
-
-    if let Some(file) = log_file {
-        dispatch = dispatch.chain(file);
-    } else {
-        eprintln!(
-            "Failed to open log file at {:?}. Logging to console only.",
-            log_file_path
-        );
-    }
-
-    if let Err(e) = dispatch.apply() {
-        eprintln!("Failed to apply logger configuration: {}", e);
-    }
-
-    panic::set_hook(Box::new(|info| {
-        let message = if let Some(s) = info.payload().downcast_ref::<&'static str>() {
-            s.to_string()
-        } else if let Some(s) = info.payload().downcast_ref::<String>() {
-            s.clone()
-        } else {
-            format!("{:?}", info.payload())
-        };
-        let location = info.location().map_or_else(
-            || "at an unknown location".to_string(),
-            |loc| format!("at {}:{}:{}", loc.file(), loc.line(), loc.column()),
-        );
-        log::error!("PANIC! {} - {}", location, message.trim());
-    }));
-
-    log::info!(
-        "Logger initialized successfully. Log file at: {:?}",
-        log_file_path
-    );
-}
-
-#[tauri::command]
-fn get_log_file_path(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let log_dir = app_handle.path().app_log_dir().map_err(|e| e.to_string())?;
-    let log_file_path = log_dir.join("app.log");
-    Ok(log_file_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-fn frontend_log(level: String, message: String) -> Result<(), String> {
-    let trimmed = message.trim();
-    if trimmed.is_empty() {
-        return Ok(());
-    }
-
-    let log_line = |line: &str| match level.to_lowercase().as_str() {
-        "error" => log::error!("[frontend] {}", line),
-        "warn" => log::warn!("[frontend] {}", line),
-        "debug" => log::debug!("[frontend] {}", line),
-        "trace" => log::trace!("[frontend] {}", line),
-        _ => log::info!("[frontend] {}", line),
-    };
-
-    for line in trimmed
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-    {
-        log_line(line);
-    }
-
-    Ok(())
-}
-
 #[derive(Clone, Copy, Debug)]
 struct MonitorBounds {
     x: i32,
@@ -1535,11 +1436,12 @@ pub fn run() {
                     };
                     let ort_library_path = resource_path.join(ort_library_name);
                     std::env::set_var("ORT_DYLIB_PATH", &ort_library_path);
-                    println!("Set ORT_DYLIB_PATH to: {}", ort_library_path.display());
+                    log::debug!("Set ORT_DYLIB_PATH to: {}", ort_library_path.display());
                 }
             }
 
-            setup_logging(&app_handle);
+            #[cfg(debug_assertions)]
+            logging::initialize();
 
             if let Some(backend) = &settings.processing_backend
                 && backend != "auto" {
@@ -1763,8 +1665,6 @@ pub fn run() {
             apply_adjustments,
             generate_preview_for_path,
             generate_uncropped_preview,
-            get_log_file_path,
-            frontend_log,
             save_collage,
             merge_hdr,
             save_hdr,

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Cpu,
-  ExternalLink as ExternalLinkIcon,
   Info,
   Trash2,
   Plus,
@@ -403,9 +402,6 @@ export default function SettingsPanel({
   const [componentError, setComponentError] = useState(false);
   const [componentMessage, setComponentMessage] = useState('');
   const [activeCategory, setActiveCategory] = useState('general');
-  const [logPath, setLogPath] = useState<string | null>(null);
-  const [logPathLoading, setLogPathLoading] = useState(true);
-  const [logPathError, setLogPathError] = useState(false);
   const [dpr, setDpr] = useState(() => (typeof window !== 'undefined' ? window.devicePixelRatio : 1));
 
   const settingCategories = useMemo(
@@ -505,21 +501,6 @@ export default function SettingsPanel({
     });
     setRestartRequired(false);
   }, [appSettings]);
-
-  useEffect(() => {
-    const fetchLogPath = async () => {
-      try {
-        const path: string = await invoke(Invokes.GetLogFilePath);
-        setLogPath(path);
-      } catch (error) {
-        console.error('Failed to get log file path:', error);
-        setLogPathError(true);
-      } finally {
-        setLogPathLoading(false);
-      }
-    };
-    fetchLogPath();
-  }, []);
 
   useEffect(() => {
     invoke<string[]>('get_lensfun_makers').then(setLensMakers).catch(console.error);
@@ -1750,32 +1731,6 @@ export default function SettingsPanel({
                         isProcessing={isClearingCache}
                         message={cacheClearMessage}
                         title={t('settings.data.clearThumbnail')}
-                      />
-
-                      <DataActionItem
-                        buttonAction={async () => {
-                          if (logPath && !logPathLoading && !logPathError) {
-                            await invoke(Invokes.ShowInFinder, { path: logPath });
-                          }
-                        }}
-                        buttonText={t('settings.data.logsButton')}
-                        description={
-                          <Text as="span" variant={TextVariants.small}>
-                            {t('settings.data.logsDesc')}
-                            <span className="block font-mono bg-bg-primary p-2 rounded-sm mt-2 break-all border border-border-color">
-                              {logPathLoading
-                                ? t('settings.data.loading')
-                                : logPathError
-                                  ? t('settings.data.statuses.failedToGetPath')
-                                  : logPath}
-                            </span>
-                          </Text>
-                        }
-                        disabled={logPathLoading || logPathError || !logPath}
-                        icon={<ExternalLinkIcon size={16} className="mr-2" />}
-                        isProcessing={false}
-                        message=""
-                        title={t('settings.data.logs')}
                       />
                     </div>
                   </div>
