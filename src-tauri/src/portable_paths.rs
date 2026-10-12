@@ -6,8 +6,9 @@ use tauri::{AppHandle, Manager};
 
 fn is_portable_directory(root: &Path) -> bool {
     root.join("portable.flag").is_file()
-        || fs::read_to_string(root.join("README.txt"))
-            .is_ok_and(|text| text.starts_with("RapidRAW portable"))
+        || fs::read_to_string(root.join("README.txt")).is_ok_and(|text| {
+            text.starts_with("RapidRAW portable") || text.starts_with("SlowRAW portable")
+        })
 }
 
 /// A marker is required so an installed build never writes beside its executable.

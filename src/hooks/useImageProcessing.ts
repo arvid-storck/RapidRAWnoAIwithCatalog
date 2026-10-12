@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import debounce from 'lodash.debounce';
-import throttle from 'lodash.throttle';
 import { useEditorStore } from '../store/useEditorStore';
 import { useUIStore } from '../store/useUIStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -309,22 +308,28 @@ export function useImageProcessing(
 
   const throttledUncroppedPreview = useMemo(
     () =>
-      throttle(
-        (adj: Adjustments) => {
-          if (!useEditorStore.getState().selectedImage?.isReady) return;
-          const jobId = ++uncroppedJobIdRef.current;
-          invoke<string>(Invokes.GenerateUncroppedPreview, { jsAdjustments: adj })
-            .then((dataUrl) => {
-              if (jobId >= latestUncroppedJobIdRef.current) {
-                latestUncroppedJobIdRef.current = jobId;
-                useEditorStore.getState().setEditor({ uncroppedAdjustedPreviewUrl: dataUrl });
-              }
-            })
-            .catch(console.error);
-        },
-        30,
-        { leading: true, trailing: true },
-      ),
+      debounce((adj: Adjustments) => {
+        if (!useEditorStore.getState().selectedImage?.isReady) return;
+        const imagePath = useEditorStore.getState().selectedImage?.path;
+        const jobId = ++uncroppedJobIdRef.current;
+        invoke<string>(Invokes.GenerateUncroppedPreview, {
+          jsAdjustments: adj,
+          targetResolution: Math.ceil(
+            Math.max(useEditorStore.getState().displaySize.width, useEditorStore.getState().displaySize.height, 512) *
+              1.25,
+          ),
+        })
+          .then((dataUrl) => {
+            if (
+              imagePath === useEditorStore.getState().selectedImage?.path &&
+              jobId >= latestUncroppedJobIdRef.current
+            ) {
+              latestUncroppedJobIdRef.current = jobId;
+              useEditorStore.getState().setEditor({ uncroppedAdjustedPreviewUrl: dataUrl });
+            }
+          })
+          .catch(console.error);
+      }, 75),
     [],
   );
 
@@ -339,7 +344,15 @@ export function useImageProcessing(
     if (activeView === 'editor' && activePanel === Panel.Crop && selectedImage?.isReady) {
       generateUncroppedPreview(adjustments);
     }
-  }, [activeView, adjustments, activePanel, selectedImage?.isReady, generateUncroppedPreview]);
+  }, [
+    activeView,
+    adjustments,
+    activePanel,
+    selectedImage?.isReady,
+    displaySize.width,
+    displaySize.height,
+    generateUncroppedPreview,
+  ]);
 
   const calculateTargetRes = useCallback(() => {
     const baseTargetRes = appSettings?.editorPreviewResolution || 1920;
@@ -392,7 +405,13 @@ export function useImageProcessing(
   );
 
   useEffect(() => {
-    if (activeView === 'editor' && selectedImage?.isReady && displaySize.width > 0 && !isSliderDragging) {
+    if (
+      activeView === 'editor' &&
+      activePanel !== Panel.Crop &&
+      selectedImage?.isReady &&
+      displaySize.width > 0 &&
+      !isSliderDragging
+    ) {
       let baseRes = calculateTargetRes();
       if (originalSize.width > 0 && originalSize.height > 0) {
         const maxRes = Math.max(originalSize.width, originalSize.height);
@@ -409,6 +428,7 @@ export function useImageProcessing(
     };
   }, [
     activeView,
+    activePanel,
     displaySize.width,
     displaySize.height,
     calculateTargetRes,

@@ -7,7 +7,7 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
   - org.freedesktop.Sdk.Extension.node24
 
-command: RapidRAW
+command: SlowRAW
 finish-args:
   - --socket=wayland
   - --socket=fallback-x11
@@ -18,16 +18,11 @@ build-options:
   append-path: /usr/lib/sdk/node24/bin:/usr/lib/sdk/rust-stable/bin
 
 modules:
-  - name: RapidRAW
+  - name: SlowRAW
     buildsystem: simple
     sources:
-      - type: git
-        url: https://github.com/CyberTimon/RapidRAW.git
-        tag: v1.3.13
-        commit: fa2528508031642e6db05b3f6e77ad582a2d220b
-        x-checker-data:
-          type: git
-          tag-pattern: ^v([\d.]+)$
+      - type: dir
+        path: ..
 
       - type: file
         url: https://huggingface.co/CyberTimon/RapidRAW-Models/resolve/main/onnxruntimes/libonnxruntime-linux-x86_64.so?download=true
@@ -48,15 +43,15 @@ modules:
 
     build-options:
       env:
-        CARGO_HOME: /run/build/RapidRAW/cargo
-        XDG_CACHE_HOME: /run/build/RapidRAW/flatpak-node/cache
-        npm_config_cache: /run/build/RapidRAW/flatpak-node/npm-cache
+        CARGO_HOME: /run/build/SlowRAW/cargo
+        XDG_CACHE_HOME: /run/build/SlowRAW/flatpak-node/cache
+        npm_config_cache: /run/build/SlowRAW/flatpak-node/npm-cache
         npm_config_offline: 'true'
         ORT_STRATEGY: system
 
     build-commands:
-      - mkdir -p /run/build/RapidRAW/src-tauri/resources
-      - cp -rf libonnxruntime.so /run/build/RapidRAW/src-tauri/resources
+      - mkdir -p /run/build/SlowRAW/src-tauri/resources
+      - cp -rf libonnxruntime.so /run/build/SlowRAW/src-tauri/resources
 
       - npm ci --offline --legacy-peer-deps
       - cargo --offline fetch --manifest-path src-tauri/Cargo.toml --verbose
@@ -64,7 +59,7 @@ modules:
 
       - install -Dm644 -t /app/share/metainfo/ data/io.github.CyberTimon.RapidRAW.metainfo.xml
       - install -Dm644 -t /app/share/applications/ data/io.github.CyberTimon.RapidRAW.desktop
-      - install -Dm755 -t /app/bin/ src-tauri/target/release/RapidRAW
+      - install -Dm755 -t /app/bin/ src-tauri/target/release/SlowRAW
 
       - desktop-file-edit --set-key=Icon --set-value="io.github.CyberTimon.RapidRAW" /app/share/applications/io.github.CyberTimon.RapidRAW.desktop
 
@@ -73,8 +68,7 @@ modules:
       - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/io.github.CyberTimon.RapidRAW.png
       - install -Dm644 src-tauri/icons/icon.png /app/share/icons/hicolor/256x256@2/apps/io.github.CyberTimon.RapidRAW.png
 
-      - mkdir -p /app/lib/RapidRAW
-      - cp -rf src-tauri/resources /app/lib/RapidRAW
-      - cp -rf src-tauri/workflows /app/lib/RapidRAW
+      - mkdir -p /app/lib/SlowRAW
+      - cp -rf src-tauri/resources /app/lib/SlowRAW
 
       - install -Dm644 LICENSE /app/share/licenses/io.github.CyberTimon.RapidRAW/LICENSE

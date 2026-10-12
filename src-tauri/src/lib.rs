@@ -36,6 +36,7 @@ mod multi_exposure;
 mod negative_conversion;
 mod panorama_stitching;
 mod panorama_utils;
+mod png_export;
 mod portable_paths;
 mod raw_processing;
 mod spot_removal;
@@ -49,6 +50,7 @@ const _: () = assert!(matches!(log::STATIC_MAX_LEVEL, log::LevelFilter::Off));
 
 use std::collections::HashMap;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -732,6 +734,7 @@ async fn apply_adjustments(
 #[tauri::command]
 async fn generate_uncropped_preview(
     js_adjustments: serde_json::Value,
+    target_resolution: Option<u32>,
     state: tauri::State<'_, AppState>,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
@@ -750,7 +753,21 @@ async fn generate_uncropped_preview(
         let state = app_handle.state::<AppState>();
         let path = loaded_image.path.clone();
         let is_raw = loaded_image.is_raw;
-        let visual_hash = calculate_visual_hash(&path, &adjustments_clone);
+        let settings = load_settings(app_handle.clone()).unwrap_or_default();
+        let target_dim = target_resolution
+            .unwrap_or(settings.editor_preview_resolution.unwrap_or(1920))
+            .clamp(
+                512,
+                loaded_image
+                    .image
+                    .width()
+                    .max(loaded_image.image.height())
+                    .max(512),
+            );
+        let mut geometry_hasher = std::collections::hash_map::DefaultHasher::new();
+        calculate_visual_hash(&path, &adjustments_clone).hash(&mut geometry_hasher);
+        target_dim.hash(&mut geometry_hasher);
+        let visual_hash = geometry_hasher.finish();
 
         let pre_geometry_base = {
             let mut cache = state.geometry_cache.lock().unwrap();
@@ -773,9 +790,6 @@ async fn generate_uncropped_preview(
 
                 let blurred_image =
                     crate::lens_blur::apply_lens_blur(patched_image, &adjustments_clone);
-
-                let settings = load_settings(app_handle.clone()).unwrap_or_default();
-                let target_dim = (settings.editor_preview_resolution.unwrap_or(1920) as f32) as u32;
 
                 let downscaled = downscale_f32_image(&blurred_image, target_dim, target_dim);
 
@@ -841,7 +855,10 @@ async fn generate_uncropped_preview(
         let lut_path = adjustments_clone["lutPath"].as_str();
         let lut = lut_path.and_then(|p| lut_processing::get_or_load_lut(&state, p).ok());
 
-        let full_hash = calculate_full_job_hash(&path, &adjustments_clone);
+        let mut render_hasher = std::collections::hash_map::DefaultHasher::new();
+        calculate_full_job_hash(&path, &adjustments_clone).hash(&mut render_hasher);
+        target_dim.hash(&mut render_hasher);
+        let full_hash = render_hasher.finish();
 
         if let Ok(processed_image) = process_and_get_dynamic_image(
             &context,

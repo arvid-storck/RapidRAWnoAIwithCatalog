@@ -1,5 +1,5 @@
+import { usePopover } from '../../../hooks/usePopover';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef, useState } from 'react';
 import { FileInput, FolderPlus } from 'lucide-react';
 
 interface ImportChoiceMenuProps {
@@ -16,24 +16,7 @@ export default function ImportChoiceMenu({
   disabled = false,
 }: ImportChoiceMenuProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const container = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
+  const { open, setOpen, container } = usePopover();
 
   const choose = (action: () => void) => {
     setOpen(false);

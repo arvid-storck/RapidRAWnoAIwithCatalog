@@ -1,3 +1,4 @@
+import IndeterminateProgress from '../ui/IndeterminateProgress';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, Loader2, Save, RefreshCw, ZoomIn, ZoomOut, Move, Grip } from 'lucide-react';
@@ -395,22 +396,7 @@ export default function DenoiseModal({
               </Text>
               <Text className="text-center font-mono h-6 flex justify-center items-center">{currentStatusText}</Text>
 
-              <div className="mt-8 w-64 relative">
-                <div className="h-1 bg-surface rounded-full overflow-hidden relative w-full shadow-xs">
-                  <motion.div
-                    className="absolute inset-y-0 w-[80%] bg-linear-to-r from-transparent via-accent to-transparent mix-blend-screen"
-                    style={{ filter: 'blur(3px)' }}
-                    animate={{ x: ['-150%', '150%'] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: [0.4, 0, 0.2, 1] }}
-                  />
-                  <motion.div
-                    className="absolute inset-y-0 w-[40%] bg-linear-to-r from-transparent via-white/90 to-transparent"
-                    style={{ filter: 'blur(1px)' }}
-                    animate={{ x: ['-250%', '250%'] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: [0.4, 0, 0.2, 1] }}
-                  />
-                </div>
-              </div>
+              <IndeterminateProgress />
 
               <Text
                 variant={TextVariants.small}

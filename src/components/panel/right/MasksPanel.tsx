@@ -566,7 +566,7 @@ export default function MasksPanel() {
     // Flattened menu chunks
     const buildFlatMenu = (mode: SubMaskMode) => [
       ...buildMenu(MASK_BASIC_TYPES, mode),
-      { type: OPTION_SEPARATOR },
+      { type: OPTION_SEPARATOR, Orientation },
       ...buildMenu(MASK_RANGE_TYPES, mode),
     ];
 

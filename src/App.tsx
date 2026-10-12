@@ -43,7 +43,6 @@ import { useProcessStore } from './store/useProcessStore';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useThumbnails } from './hooks/useThumbnails';
-import { ImageDimensions } from './hooks/useImageRenderSize';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTauriListeners } from './hooks/useTauriListeners';
 import { useFileOperations } from './hooks/useFileOperations';
@@ -133,13 +132,11 @@ function App() {
     uiVisibility,
     leftPanelWidth,
     rightPanelWidth,
-    compactEditorPanelHeightOverride,
     activePanel,
     activeLayoutDragItem,
     isSettingsOpen,
     isLibraryExportPanelVisible,
     setUI,
-    setPanel,
     setLayoutDragItem,
     movePanel,
   } = useUIStore(
@@ -152,13 +149,11 @@ function App() {
       uiVisibility: state.uiVisibility,
       leftPanelWidth: state.leftPanelWidth,
       rightPanelWidth: state.rightPanelWidth,
-      compactEditorPanelHeightOverride: state.compactEditorPanelHeightOverride,
       activePanel: state.activePanel,
       activeLayoutDragItem: state.activeLayoutDragItem,
       isSettingsOpen: state.isSettingsOpen,
       isLibraryExportPanelVisible: state.isLibraryExportPanelVisible,
       setUI: state.setUI,
-      setPanel: state.setPanel,
       setLayoutDragItem: state.setLayoutDragItem,
       movePanel: state.movePanel,
     })),
@@ -202,17 +197,6 @@ function App() {
 
   const prevAdjustmentsRef = useRef<any>(null);
 
-  const [viewportSize, setViewportSize] = useState<ImageDimensions>(() => {
-    if (typeof window === 'undefined') {
-      return { width: 0, height: 0 };
-    }
-
-    return {
-      width: Math.round(window.visualViewport?.width ?? window.innerWidth),
-      height: Math.round(window.visualViewport?.height ?? window.innerHeight),
-    };
-  });
-
   const isBackendReadyRef = useRef(true);
   const previewJobIdRef = useRef<number>(0);
   const latestRenderedJobIdRef = useRef<number>(0);
@@ -243,51 +227,6 @@ function App() {
     libraryViewMode,
     setLibraryViewMode,
   });
-
-  const COMPACT_EDITOR_MAX_WIDTH = 900;
-
-  const isPortraitViewport = viewportSize.width > 0 && viewportSize.height > viewportSize.width;
-
-  type LayoutMode = 'compact' | 'full';
-  const layoutMode: LayoutMode =
-    isPortraitViewport && viewportSize.width > 0 && viewportSize.width <= COMPACT_EDITOR_MAX_WIDTH ? 'compact' : 'full';
-
-  const useCompactPanels = layoutMode === 'compact';
-  const useWidePanels = false;
-  const compactEditorPanelMinHeight = 220;
-  const compactEditorPanelMaxHeight =
-    viewportSize.height > 0
-      ? Math.max(compactEditorPanelMinHeight, Math.min(Math.round(viewportSize.height * 0.85), 850))
-      : 520;
-
-  const getDynamicCompactPanelHeight = () => {
-    const { originalSize, adjustments } = useEditorStore.getState();
-    const halfScreenHeight = viewportSize.height > 0 ? Math.round(viewportSize.height * 0.5) : 340;
-
-    if (!selectedImage || originalSize.width === 0 || originalSize.height === 0 || viewportSize.width === 0) {
-      return halfScreenHeight;
-    }
-    let effectiveRatio = originalSize.width / originalSize.height;
-    const orientationSteps = adjustments?.orientationSteps || 0;
-    if (orientationSteps % 2 !== 0) {
-      effectiveRatio = originalSize.height / originalSize.width;
-    }
-    if (adjustments?.aspectRatio && adjustments.aspectRatio > 0) {
-      effectiveRatio = adjustments.aspectRatio;
-    }
-    const desiredImageHeight = viewportSize.width / effectiveRatio;
-    const topUiEstimation = !appSettings?.decorations && !isWindowFullScreen ? 110 : 60;
-    const totalDesiredTopHeight = desiredImageHeight + topUiEstimation;
-    const calculatedBottomHeight = Math.round(viewportSize.height - totalDesiredTopHeight);
-    return Math.max(halfScreenHeight, calculatedBottomHeight);
-  };
-
-  const compactEditorPanelDefaultHeight = getDynamicCompactPanelHeight();
-  const compactEditorPanelHeight = Math.max(
-    compactEditorPanelMinHeight,
-    Math.min(compactEditorPanelHeightOverride ?? compactEditorPanelDefaultHeight, compactEditorPanelMaxHeight),
-  );
-  const compactEditorPanelCollapsedHeight = 96;
 
   const { handleCopyAdjustments, handlePasteAdjustments, handleResetAdjustments, handleZoomChange } =
     useEditorActions();
@@ -436,33 +375,6 @@ function App() {
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const updateViewportSize = () => {
-      const nextViewportSize = {
-        width: Math.round(window.visualViewport?.width ?? window.innerWidth),
-        height: Math.round(window.visualViewport?.height ?? window.innerHeight),
-      };
-
-      setViewportSize((prev) =>
-        prev.width === nextViewportSize.width && prev.height === nextViewportSize.height ? prev : nextViewportSize,
-      );
-    };
-
-    updateViewportSize();
-
-    window.addEventListener('resize', updateViewportSize);
-    window.addEventListener('orientationchange', updateViewportSize);
-    window.visualViewport?.addEventListener('resize', updateViewportSize);
-
-    return () => {
-      window.removeEventListener('resize', updateViewportSize);
-      window.removeEventListener('orientationchange', updateViewportSize);
-      window.visualViewport?.removeEventListener('resize', updateViewportSize);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleGlobalContextMenu = (event: MouseEvent) => {
       event.preventDefault();
     };
@@ -547,15 +459,6 @@ function App() {
             uiVisibility: { ...state.uiVisibility, filmstrip: true },
           }));
         }
-      } else if (stateKey === 'compact') {
-        setUI({
-          compactEditorPanelHeightOverride: Math.round(
-            Math.max(
-              compactEditorPanelMinHeight,
-              Math.min(startSize - (moveEvent.clientY - startY), compactEditorPanelMaxHeight),
-            ),
-          ),
-        });
       }
     };
 
@@ -573,8 +476,7 @@ function App() {
       setIsResizing(false);
     };
 
-    document.documentElement.style.cursor =
-      stateKey === 'bottom' || stateKey === 'compact' ? 'row-resize' : 'col-resize';
+    document.documentElement.style.cursor = stateKey === 'bottom' ? 'row-resize' : 'col-resize';
 
     window.addEventListener('pointermove', doDrag, { passive: false });
     window.addEventListener('pointerup', stopDrag);
@@ -597,8 +499,6 @@ function App() {
         bottomPanelHeight: DEFAULT_BOTTOM_PANEL_HEIGHT,
         uiVisibility: { ...state.uiVisibility, filmstrip: true },
       }));
-    } else if (stateKey === 'compact') {
-      setUI({ compactEditorPanelHeightOverride: null });
     }
   };
 
@@ -613,13 +513,6 @@ function App() {
       unlistenPromise.then((unlisten: any) => unlisten());
     };
   }, [setUI]);
-
-  const handlePanelSelect = useCallback(
-    (panelId: Panel) => {
-      setPanel(panelId);
-    },
-    [setPanel],
-  );
 
   const renderAppPanel = useCallback(
     (panelId: Panel) => {
@@ -682,7 +575,6 @@ function App() {
   const hasMainContent =
     hasRoots || !!currentFolderPath || isCatalogMode || (activeView === 'editor' && !!selectedImage);
 
-  const shouldHideCatalogPanel = useCompactPanels || useWidePanels;
   const isWgpuActive =
     activeView === 'editor' &&
     appSettings?.useWgpuRenderer !== false &&
@@ -729,7 +621,7 @@ function App() {
 
   const ActiveOverlayIcon = activeLayoutDragItem ? PANEL_ICONS[activeLayoutDragItem] : null;
   const effectiveLeftWidth = uiVisibility.leftPanel ? leftPanelWidth : 48;
-  const effectiveRightWidth = uiVisibility.rightPanel ? rightPanelWidth : useWidePanels ? 58 : 48;
+  const effectiveRightWidth = uiVisibility.rightPanel ? rightPanelWidth : 48;
 
   return (
     <>
@@ -781,7 +673,7 @@ function App() {
                   {renderAppPanel(Panel.Catalog)}
                 </div>
               )}
-              {activeView === 'editor' && uiVisibility.leftPanel && !shouldHideCatalogPanel && hasMainContent && (
+              {activeView === 'editor' && uiVisibility.leftPanel && hasMainContent && (
                 <SidePanelArea
                   side="left"
                   width={effectiveLeftWidth}
@@ -812,9 +704,6 @@ function App() {
                     <EditorView
                       transformWrapperRef={transformWrapperRef}
                       isResizing={isResizing}
-                      layoutMode={layoutMode}
-                      compactEditorPanelHeight={compactEditorPanelHeight}
-                      compactEditorPanelCollapsedHeight={compactEditorPanelCollapsedHeight}
                       thumbnailAspectRatio={thumbnailAspectRatio}
                       sortedImageList={sortedImageList}
                       createResizeHandler={createResizeHandler}
@@ -829,9 +718,7 @@ function App() {
                       handlePasteAdjustments={handlePasteAdjustments}
                       handleRate={handleRate}
                       handleZoomChange={handleZoomChange}
-                      handlePanelSelect={handlePanelSelect}
                       requestThumbnails={requestThumbnails}
-                      renderAppPanel={renderAppPanel}
                     />
                   )}
                 </div>
@@ -846,7 +733,6 @@ function App() {
                     groupBadgeInfo={groupBadgeInfo}
                     thumbnailSize={thumbnailSize}
                     thumbnailAspectRatio={thumbnailAspectRatio}
-                    layoutMode={layoutMode}
                     setThumbnailSize={setThumbnailSize}
                     setThumbnailAspectRatio={setThumbnailAspectRatio}
                     handleClearSelection={handleClearSelection}
@@ -882,7 +768,7 @@ function App() {
                   {renderAppPanel(Panel.Export)}
                 </div>
               )}
-              {activeView === 'editor' && uiVisibility.rightPanel && !useCompactPanels && hasMainContent && (
+              {activeView === 'editor' && uiVisibility.rightPanel && hasMainContent && (
                 <SidePanelArea
                   side="right"
                   width={effectiveRightWidth}
@@ -892,7 +778,6 @@ function App() {
                   onWidthChange={createResizeHandler('right', effectiveRightWidth)}
                   onWidthReset={createResizeResetHandler('right')}
                   isResizing={isResizing}
-                  showAdditionalTabs={useWidePanels}
                 />
               )}
             </div>

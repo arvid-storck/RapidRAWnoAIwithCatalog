@@ -19,7 +19,6 @@ interface LibraryViewProps {
   groupBadgeInfo: Map<GroupId, GroupBadgeInfo> | null;
   thumbnailSize: ThumbnailSize;
   thumbnailAspectRatio: ThumbnailAspectRatio;
-  layoutMode: 'compact' | 'wide' | 'full';
   setThumbnailSize: (size: ThumbnailSize) => void;
   setThumbnailAspectRatio: (ratio: ThumbnailAspectRatio) => void;
   handleClearSelection: () => void;
@@ -41,7 +40,6 @@ export default function LibraryView({
   groupBadgeInfo,
   thumbnailSize,
   thumbnailAspectRatio,
-  layoutMode,
   setThumbnailSize,
   setThumbnailAspectRatio,
   handleClearSelection,
@@ -134,7 +132,6 @@ export default function LibraryView({
             isExportDisabled={multiSelectedPaths.length === 0}
             isImportDisabled={false}
             isLibraryView={true}
-            layoutMode={layoutMode}
             isPasted={isPasted}
             isPasteDisabled={useEditorStore.getState().copiedAdjustments === null || multiSelectedPaths.length === 0}
             isRatingDisabled={multiSelectedPaths.length === 0}

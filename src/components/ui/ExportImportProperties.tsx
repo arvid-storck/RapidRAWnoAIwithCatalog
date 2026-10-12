@@ -31,11 +31,13 @@ export const FILENAME_VARIABLES: Array<string> = [
 ];
 
 export type TiffBitDepth = 8 | 16;
+export type PngBitDepth = 1 | 2 | 4 | 8 | 16;
 
 export interface ExportSettings {
   filenameTemplate: string | null;
   jpegQuality: number;
   tiffBitDepth: TiffBitDepth;
+  pngBitDepth: PngBitDepth;
   keepMetadata: boolean;
   preserveTimestamps: boolean;
   resize: {
@@ -106,6 +108,7 @@ export interface ExportPreset {
   fileFormat: string;
   jpegQuality: number;
   tiffBitDepth?: TiffBitDepth;
+  pngBitDepth?: PngBitDepth;
   enableResize: boolean;
   resizeMode: string;
   resizeValue: number;

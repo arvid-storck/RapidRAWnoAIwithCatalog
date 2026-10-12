@@ -1,13 +1,11 @@
 import { type RefObject, type PointerEvent as ReactPointerEvent } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import clsx from 'clsx';
-import { motion, AnimatePresence } from 'framer-motion';
 
 import Editor from '../panel/Editor';
 import PanelVisibilityMenu from '../panel/PanelVisibilityMenu';
 import BottomBar from '../panel/BottomBar';
 import Resizer from '../ui/Resizer';
-import { MobilePanelSwitcher } from '../panel/PanelSwitcher';
 
 import { useEditorStore } from '../../store/useEditorStore';
 import { useUIStore } from '../../store/useUIStore';
@@ -19,9 +17,6 @@ import { ImageFile, Orientation, ThumbnailAspectRatio } from '../ui/AppPropertie
 interface EditorViewProps {
   transformWrapperRef: RefObject<any>;
   isResizing: boolean;
-  layoutMode: 'compact' | 'wide' | 'full';
-  compactEditorPanelHeight: number;
-  compactEditorPanelCollapsedHeight: number;
   thumbnailAspectRatio: ThumbnailAspectRatio;
   sortedImageList: ImageFile[];
   createResizeHandler: (stateKey: string, startSize: number) => (e: ReactPointerEvent<HTMLDivElement>) => void;
@@ -36,17 +31,12 @@ interface EditorViewProps {
   handlePasteAdjustments: () => void;
   handleRate: (...args: any) => void;
   handleZoomChange: (zoom: number) => void;
-  handlePanelSelect: (panelId: any) => void;
   requestThumbnails: any;
-  renderAppPanel: (panelId: any) => React.ReactNode;
 }
 
 export default function EditorView({
   transformWrapperRef,
   isResizing,
-  layoutMode,
-  compactEditorPanelHeight,
-  compactEditorPanelCollapsedHeight,
   thumbnailAspectRatio,
   sortedImageList,
   createResizeHandler,
@@ -61,9 +51,7 @@ export default function EditorView({
   handlePasteAdjustments,
   handleRate,
   handleZoomChange,
-  handlePanelSelect,
   requestThumbnails,
-  renderAppPanel,
 }: EditorViewProps) {
   const { selectedImage } = useEditorStore(
     useShallow((state) => ({
@@ -71,13 +59,12 @@ export default function EditorView({
     })),
   );
 
-  const { isFullScreen, isInstantTransition, uiVisibility, bottomPanelHeight, activePanel, setUI } = useUIStore(
+  const { isFullScreen, isInstantTransition, uiVisibility, bottomPanelHeight, setUI } = useUIStore(
     useShallow((state) => ({
       isFullScreen: state.isFullScreen,
       isInstantTransition: state.isInstantTransition,
       uiVisibility: state.uiVisibility,
       bottomPanelHeight: state.bottomPanelHeight,
-      activePanel: state.activePanel,
       setUI: state.setUI,
     })),
   );
@@ -132,8 +119,7 @@ export default function EditorView({
       onZoomChange={handleZoomChange}
       rating={imageRatings[selectedImage?.path || ''] || 0}
       selectedImage={selectedImage ?? undefined}
-      showFilmstrip={layoutMode !== 'compact'}
-      layoutMode={layoutMode}
+      showFilmstrip
       showZoomControls
       thumbnailAspectRatio={thumbnailAspectRatio}
       totalImages={sortedImageList.length}
@@ -151,64 +137,20 @@ export default function EditorView({
         opacity: isFullScreen ? 0 : 1,
       }}
     >
-      {layoutMode !== 'compact' && (
-        <Resizer
-          direction={Orientation.Horizontal}
-          onMouseDown={createResizeHandler('bottom', bottomPanelHeight)}
-          onDoubleClick={createResizeResetHandler('bottom')}
-        />
-      )}
+      <Resizer
+        direction={Orientation.Horizontal}
+        onMouseDown={createResizeHandler('bottom', bottomPanelHeight)}
+        onDoubleClick={createResizeResetHandler('bottom')}
+      />
       {editorBottomBarComponent}
     </div>
   );
 
-  const editorMobilePanelNode =
-    layoutMode === 'compact' ? (
-      <div
-        className={clsx(
-          'flex overflow-hidden shrink-0 flex-col bg-bg-secondary rounded-lg',
-          !isResizing && !isInstantTransition && 'transition-all duration-300 ease-in-out',
-        )}
-        style={{
-          height: isFullScreen ? 0 : activePanel ? compactEditorPanelHeight : compactEditorPanelCollapsedHeight,
-          opacity: isFullScreen ? 0 : 1,
-        }}
-      >
-        {activePanel && !isFullScreen && (
-          <Resizer
-            direction={Orientation.Horizontal}
-            onMouseDown={createResizeHandler('compact', compactEditorPanelHeight)}
-            onDoubleClick={createResizeResetHandler('compact')}
-          />
-        )}
-        <div className="min-h-0 flex-1 overflow-hidden relative">
-          <AnimatePresence mode="wait">
-            {activePanel && (
-              <motion.div
-                key={activePanel}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.15 }}
-                className="absolute inset-0 overflow-y-auto custom-scrollbar"
-              >
-                {renderAppPanel(activePanel)}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        <MobilePanelSwitcher activePanel={activePanel} onPanelSelect={handlePanelSelect} />
-        <div className="shrink-0 border-t border-surface">{editorBottomBarComponent}</div>
-      </div>
-    ) : null;
-
   return (
-    <div
-      className={clsx('relative flex grow h-full min-h-0', layoutMode === 'compact' ? 'flex-col gap-2' : 'flex-col')}
-    >
+    <div className="relative flex grow h-full min-h-0 flex-col">
       <PanelVisibilityMenu />
       <div className="flex-1 flex flex-col min-w-0 min-h-0">{editorNode}</div>
-      {uiVisibility.bottomPanel && (layoutMode === 'compact' ? editorMobilePanelNode : editorBottomBarNode)}
+      {uiVisibility.bottomPanel && editorBottomBarNode}
     </div>
   );
 }

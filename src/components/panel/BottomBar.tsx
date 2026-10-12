@@ -49,7 +49,6 @@ interface BottomBarProps {
   rating: number;
   selectedImage?: SelectedImage;
   showFilmstrip?: boolean;
-  layoutMode: 'compact' | 'wide' | 'full';
   showZoomControls?: boolean;
   thumbnailAspectRatio: ThumbnailAspectRatio;
   totalImages?: number;

@@ -30,12 +30,6 @@ interface CameraSettings {
   PhotographicSensitivity: CameraSetting;
 }
 
-interface GPSData {
-  altitude: number | null;
-  lat: number | null;
-  lon: number | null;
-}
-
 interface MetaDataItemProps {
   label: string;
   value: any;
@@ -47,16 +41,6 @@ const EMPTY_TAGS: string[] = [];
 function formatExifTag(str: string) {
   if (!str) return '';
   return str.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2');
-}
-
-function parseDms(dmsString: string) {
-  if (!dmsString) return null;
-  const parts = dmsString.match(/(\d+\.?\d*)\s+deg\s+(\d+\.?\d*)\s+min\s+(\d+\.?\d*)\s+sec/);
-  if (!parts) return null;
-  const degrees = parseFloat(parts[1]);
-  const minutes = parseFloat(parts[2]);
-  const seconds = parseFloat(parts[3]);
-  return degrees + minutes / 60 + seconds / 3600;
 }
 
 const CAMERA_ICONS: Record<string, React.FC> = {
@@ -259,12 +243,18 @@ export default function MetadataPanel() {
     return expandGroupedPaths(imageList, targetPaths, groupingMode);
   };
 
-  const { cameraGridSettings, lensSetting, gpsData, otherExifEntries } = useMemo(() => {
+  const { cameraGridSettings, lensSetting, otherExifEntries } = useMemo(() => {
     const exif = selectedImage?.exif || {};
 
     const cameraGridKeys = ['ExposureTime', 'FNumber', 'PhotographicSensitivity', 'FocalLengthIn35mmFilm'];
     const cameraGridSettings = cameraGridKeys.map((key) => {
-      const value = exif[key];
+      const value =
+        exif[key] ??
+        (key === 'FocalLengthIn35mmFilm'
+          ? exif.FocalLength
+          : key === 'PhotographicSensitivity'
+            ? exif.ISOSpeed
+            : undefined);
       const hasValue = value !== undefined && value !== null && value !== '';
 
       const translatedLabel =
@@ -303,27 +293,24 @@ export default function MetadataPanel() {
             : '-',
     };
 
-    const latStr = exif.GPSLatitude;
-    const latRef = exif.GPSLatitudeRef;
-    const lonStr = exif.GPSLongitude;
-    const lonRef = exif.GPSLongitudeRef;
-
-    const gpsData: GPSData = { lat: null, lon: null, altitude: exif.GPSAltitude || null };
-    if (latStr && latRef && lonStr && lonRef) {
-      const parsedLat = parseDms(latStr);
-      const parsedLon = parseDms(lonStr);
-      if (parsedLat !== null && parsedLon !== null) {
-        gpsData.lat = latRef.toUpperCase() === 'S' ? -parsedLat : parsedLat;
-        gpsData.lon = lonRef.toUpperCase() === 'W' ? -parsedLon : parsedLon;
-      }
-    }
-
-    const handledKeys = [...cameraGridKeys, 'LensModel', ...EDITABLE_FIELDS.map((f) => f.key)];
+    const handledKeys = [
+      ...cameraGridKeys,
+      'LensModel',
+      'Make',
+      'Model',
+      'DateTimeOriginal',
+      ...EDITABLE_FIELDS.map((f) => f.key),
+    ];
     const otherExifEntries = Object.entries(exif)
-      .filter(([key]) => !handledKeys.includes(key))
+      .filter(
+        ([key, value]) =>
+          !handledKeys.includes(key) &&
+          !/^(MakerNote|ICCProfile|ThumbnailImage|PreviewImage|JpgFromRaw)$/i.test(key) &&
+          !/^\s*(?:\[binary|binary data|0x[0-9a-f]{32})/i.test(String(value)),
+      )
       .sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
 
-    return { cameraGridSettings, lensSetting, gpsData, otherExifEntries };
+    return { cameraGridSettings, lensSetting, otherExifEntries };
   }, [selectedImage?.exif, t]);
 
   const currentColor = useMemo(() => {
@@ -340,7 +327,6 @@ export default function MetadataPanel() {
       .sort((a, b) => a.tag.localeCompare(b.tag));
   }, [tags]);
 
-  const hasGps = gpsData.lat !== null && gpsData.lon !== null;
   const fullPath = selectedImage?.path || '';
   const isVirtualCopy = fullPath.includes('?vc=');
   const basePath = fullPath.split('?vc=')[0];
@@ -459,6 +445,10 @@ export default function MetadataPanel() {
                 {t('editor.metadata.camera.title')}
               </Text>
               <div className="flex flex-col gap-2">
+                <MetadataItem
+                  label={t('editor.metadata.camera.model')}
+                  value={[selectedImage.exif?.Make, selectedImage.exif?.Model].filter(Boolean).join(' ') || '-'}
+                />
                 <div className="grid grid-cols-2 gap-2">
                   {cameraGridSettings.map((item: any) => {
                     const Icon = CAMERA_ICONS[item.key];
@@ -750,58 +740,17 @@ export default function MetadataPanel() {
               </div>
             </div>
 
-            {hasGps && gpsData?.lat && gpsData?.lon && (
-              <div>
-                <Text variant={TextVariants.heading} className="mb-3">
-                  {t('editor.metadata.gps.title')}
-                </Text>
-                <div className="bg-surface border border-surface rounded-xl p-3 flex flex-col gap-3">
-                  <div className="relative rounded-md overflow-hidden shadow-sm">
-                    <iframe
-                      className="pointer-events-none"
-                      frameBorder="0"
-                      height="180"
-                      loading="lazy"
-                      marginHeight={0}
-                      marginWidth={0}
-                      scrolling="no"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${gpsData.lon - 0.01}%2C${
-                        gpsData.lat - 0.01
-                      }%2C${gpsData.lon + 0.01}%2C${gpsData.lat + 0.01}&layer=mapnik&marker=${gpsData.lat}%2C${
-                        gpsData.lon
-                      }`}
-                      width="100%"
-                    ></iframe>
-                    <a
-                      className="absolute inset-0 cursor-pointer hover:bg-black/10 transition-colors"
-                      href={`https://www.openstreetmap.org/?mlat=${gpsData.lat}&mlon=${gpsData.lon}#map=15/${gpsData.lat}/${gpsData.lon}`}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      data-tooltip={t('editor.metadata.gps.clickToOpenTooltip')}
-                    ></a>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <MetadataItem label={t('editor.metadata.gps.latitude')} value={gpsData.lat?.toFixed(6)} />
-                    <MetadataItem label={t('editor.metadata.gps.longitude')} value={gpsData.lon?.toFixed(6)} />
-                    {gpsData.altitude && (
-                      <MetadataItem label={t('editor.metadata.gps.altitude')} value={`${gpsData.altitude} m`} />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {otherExifEntries.length > 0 && (
-              <div>
-                <Text variant={TextVariants.heading} className="mb-3">
+              <details key={selectedImage.path} className="bg-surface rounded-xl">
+                <summary className="cursor-pointer p-3 text-text-primary font-medium">
                   {t('editor.metadata.extendedExif.title')}
-                </Text>
-                <div className="bg-surface border border-surface rounded-xl p-3 flex flex-col gap-0.5 overflow-hidden">
+                </summary>
+                <div className="max-h-80 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-0.5">
                   {otherExifEntries.map(([tag, value]) => (
                     <MetadataItem key={tag} label={formatExifTag(tag)} value={value} />
                   ))}
                 </div>
-              </div>
+              </details>
             )}
           </div>
         ) : (

@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
 
-if (packageJson.name !== 'rapidraw' || !existsSync(join(projectRoot, 'src-tauri', 'Cargo.toml'))) {
-  throw new Error('Refusing to clean outside the RapidRAW project.');
+if (packageJson.name !== 'slowraw' || !existsSync(join(projectRoot, 'src-tauri', 'Cargo.toml'))) {
+  throw new Error('Refusing to clean outside the SlowRAW project.');
 }
 
 const dryRun = process.argv.includes('--dry-run');

@@ -140,7 +140,6 @@ export function useAppNavigation({ clearThumbnailQueue, refs }: AppNavigationPro
 
       setUI({
         isLibraryExportPanelVisible: false,
-        compactEditorPanelHeightOverride: null,
       });
 
       if (cached?.selectedImage?.isReady) {

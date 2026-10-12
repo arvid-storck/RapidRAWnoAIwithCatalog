@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import debounce from 'lodash.debounce';
 
 import { ImageDimensions, RenderSize, useImageRenderSize } from '../../hooks/useImageRenderSize';
-import { getZoomImageDimensions } from '../../utils/zoom';
+import { getZoomImageDimensions, resizeZoomViewport } from '../../utils/zoom';
 import { Adjustments, AiPatch, MaskContainer, INITIAL_ADJUSTMENTS } from '../../utils/adjustments';
 import {
   calculateCenteredCrop,
@@ -186,18 +186,15 @@ export default function Editor({ onBackToLibrary, onContextMenu, onImageSelect, 
   const wasPanningDisabledOnDown = useRef(false);
 
   const prevRenderState = useRef({
-    containerLeft: 0,
-    containerTop: 0,
+    containerWidth: 0,
+    containerHeight: 0,
     offsetX: 0,
     offsetY: 0,
     width: 0,
+    height: 0,
+    path: undefined as string | undefined,
   });
-  const transitionAnchorRef = useRef<{
-    active: boolean;
-    screenImageLeft: number;
-    screenImageTop: number;
-    physicalImageWidth: number;
-  } | null>(null);
+
   const wgpuSyncRef = useRef<number | null>(null);
   const lastWgpuTransformRef = useRef<string | null>(null);
 
@@ -1229,50 +1226,21 @@ export default function Editor({ onBackToLibrary, onContextMenu, onImageSelect, 
   useLayoutEffect(() => {
     const container = imageContainerRef.current;
     if (!container || imageRenderSize.width === 0) return;
-
-    const currentRect = container.getBoundingClientRect();
-    const scaleOld = transformStateRef.current.scale;
-    const posOldX = transformStateRef.current.positionX;
-    const posOldY = transformStateRef.current.positionY;
-
-    if (isInstantTransition && !transitionAnchorRef.current && scaleOld > 1.01) {
-      transitionAnchorRef.current = {
-        active: true,
-        screenImageLeft: prevRenderState.current.containerLeft + posOldX + prevRenderState.current.offsetX * scaleOld,
-        screenImageTop: prevRenderState.current.containerTop + posOldY + prevRenderState.current.offsetY * scaleOld,
-        physicalImageWidth: prevRenderState.current.width * scaleOld,
-      };
+    const previous = prevRenderState.current;
+    const current = transformStateRef.current;
+    if (
+      previous.width > 0 &&
+      previous.path === selectedImage?.path &&
+      current.scale > 1.01 &&
+      (previous.containerWidth !== imageRenderSize.containerWidth ||
+        previous.containerHeight !== imageRenderSize.containerHeight)
+    ) {
+      const { x, y, scale } = resizeZoomViewport(previous, imageRenderSize, current, transformConfig.maxScale);
+      const bounded = clampToBounds(x, y, scale);
+      applyTransform(bounded.x, bounded.y, bounded.scale);
     }
-
-    if (!isInstantTransition && transitionAnchorRef.current) {
-      transitionAnchorRef.current = null;
-    }
-
-    if (transitionAnchorRef.current && transitionAnchorRef.current.active) {
-      const anchor = transitionAnchorRef.current;
-
-      const scaleNew = anchor.physicalImageWidth / imageRenderSize.width;
-
-      const posNewX = anchor.screenImageLeft - currentRect.left - imageRenderSize.offsetX * scaleNew;
-      const posNewY = anchor.screenImageTop - currentRect.top - imageRenderSize.offsetY * scaleNew;
-
-      if (
-        Math.abs(scaleNew - scaleOld) > 0.001 ||
-        Math.abs(posNewX - posOldX) > 0.5 ||
-        Math.abs(posNewY - posOldY) > 0.5
-      ) {
-        applyTransform(posNewX, posNewY, scaleNew);
-      }
-    }
-
-    prevRenderState.current = {
-      containerLeft: currentRect.left,
-      containerTop: currentRect.top,
-      offsetX: imageRenderSize.offsetX,
-      offsetY: imageRenderSize.offsetY,
-      width: imageRenderSize.width,
-    };
-  }, [isFullScreen, imageRenderSize, isInstantTransition, applyTransform]);
+    prevRenderState.current = { ...imageRenderSize, path: selectedImage?.path };
+  }, [imageRenderSize, selectedImage?.path, transformConfig.maxScale, clampToBounds, applyTransform]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

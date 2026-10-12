@@ -64,7 +64,7 @@ See the upstream repository for the original project, its contributors, and its 
 
 ## For whom is this for?
 
-This version of RapidRAW is for photographers who want a <strong>clean, fast, local workflow</strong> with both a real catalog and a straightforward RAW editor.
+This version of SlowRAW is for photographers who want a <strong>clean, fast, local workflow</strong> with both a real catalog and a straightforward RAW editor.
 
 It is particularly focused on large photo libraries where folder-based browsing alone becomes cumbersome.
 
@@ -86,15 +86,15 @@ The result is intended to stay simple.
 
 ### Built-in RAW Engine
 
-RAW development uses [dnglab / rawler](https://github.com/dnglab/dnglab/tree/main/rawler) linked into RapidRAW. RAW files work immediately after installation; no separate engine, toolchain download, or temporary image file is required at runtime. Linear RAW Processing is available in Settings.
+RAW development uses [dnglab / rawler](https://github.com/dnglab/dnglab/tree/main/rawler) linked into SlowRAW. RAW files work immediately after installation; no separate engine, toolchain download, or temporary image file is required at runtime. Linear RAW Processing is available in Settings.
 
-To update only the rawler version used by the source code, run this single command from the project root:
+Before compiling, update Rawler and kamadak-exif together from the project root:
 
 ```powershell
-cargo update --manifest-path src-tauri/Cargo.toml -p rawler
+npm run update:metadata
 ```
 
-This updates the RAW dependency in the source project. Build RapidRAW as usual to use it. See [docs/README.md](docs/README.md#updating-the-raw-engine) for integration details and compatibility checks. There is no in-app RAW update button.
+This updates the source dependencies within the Cargo.toml requirements and records them in Cargo.lock. Compile SlowRAW normally afterward. See [docs/README.md](docs/README.md#updating-raw-and-exif-dependencies) for integration details and compatibility checks.
 
 ### Separately Updateable Lens Profiles
 
@@ -111,14 +111,14 @@ Supported corrections include:
 ## Supported Formats, Lenses & Languages
 <details>
 
-RapidRAW relies on [dnglab / rawler](https://github.com/dnglab/dnglab/tree/main/rawler) for RAW file decoding. See the **[dnglab Supported Cameras List](https://github.com/dnglab/dnglab/blob/main/SUPPORTED_CAMERAS.md)** for specific camera models.
+SlowRAW relies on [dnglab / rawler](https://github.com/dnglab/dnglab/tree/main/rawler) for RAW file decoding. See the **[dnglab Supported Cameras List](https://github.com/dnglab/dnglab/blob/main/SUPPORTED_CAMERAS.md)** for specific camera models.
 
 </details>
 
 <details>
 <summary><strong>Lens Correction Support</strong></summary>
 
-RapidRAW supports automatic lens profile detection, distortion, transverse chromatic aberration (TCA), and vignetting correction through **[Lensfun](https://lensfun.github.io/)**.
+SlowRAW supports automatic lens profile detection, distortion, transverse chromatic aberration (TCA), and vignetting correction through **[Lensfun](https://lensfun.github.io/)**.
 
 Lens profiles can be updated independently from the main application.
 
@@ -129,7 +129,7 @@ Lens profiles can be updated independently from the main application.
 <details>
 <summary><strong>Supported Languages</strong></summary>
 
-RapidRAW currently includes translations for:
+SlowRAW currently includes translations for:
 
 * **English**
 
@@ -246,7 +246,7 @@ This allows the original image to remain independent of the editing state.
 
 ## System Requirements
 
-RapidRAW is designed to remain lightweight while making extensive use of GPU acceleration.
+SlowRAW is designed to remain lightweight while making extensive use of GPU acceleration.
 
 ### Operating System
 
@@ -275,7 +275,6 @@ This project is based on and builds upon the following open-source projects:
 * **[NegPy](https://github.com/marcinz606/NegPy):** Inspiration for film-negative conversion.
 * **[pixls.us](https://discuss.pixls.us/):** Open-source photography community and technical reference.
 * **[darktable](https://github.com/darktable-org/darktable):** Reference implementations for parts of the image-processing workflow.
-* **[spektrafilm](https://github.com/andreavolpato/spektrafilm):** Film-emulation resources used by the application.
 
 ## License & Philosophy
 
@@ -284,3 +283,13 @@ This project is licensed under the **GNU Affero General Public License v3.0 (AGP
 See the [LICENSE](LICENSE) file for the complete license text.
 
 This repository is based on RapidRAW by CyberTimon and contains substantial modifications.
+
+### Update RAW and EXIF support before compiling
+
+```powershell
+npm run update:metadata
+```
+
+This updates Rawler and kamadak-exif in `src-tauri/Cargo.lock` within the declared
+dependency requirements. Compile normally afterward. PNG export supports
+1/2/4-bit grayscale and 8/16-bit color.

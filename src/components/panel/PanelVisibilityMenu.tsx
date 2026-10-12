@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { usePopover } from '../../hooks/usePopover';
 import { useTranslation } from 'react-i18next';
 import { SlidersHorizontal } from 'lucide-react';
 import { useUIStore } from '../../store/useUIStore';
@@ -17,27 +17,10 @@ const panels: Array<{
 
 export default function PanelVisibilityMenu() {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const container = useRef<HTMLDivElement>(null);
+  const { open, setOpen, container } = usePopover();
   const uiVisibility = useUIStore((state) => state.uiVisibility);
   const activeView = useUIStore((state) => state.activeView);
   const setUI = useUIStore((state) => state.setUI);
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
 
   return (
     <div ref={container} className="absolute bottom-2 right-1 z-40">

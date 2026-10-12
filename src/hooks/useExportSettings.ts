@@ -1,33 +1,55 @@
-import { useState, useMemo, useCallback } from 'react';
-import { ExportPreset, TiffBitDepth, WatermarkAnchor } from '../components/ui/ExportImportProperties';
+import { useState, useMemo, useCallback, type SetStateAction } from 'react';
+import { ExportPreset, TiffBitDepth, PngBitDepth, WatermarkAnchor } from '../components/ui/ExportImportProperties';
+
+// Session draft survives panel remounts and viewport/layout changes.
+const exportDraft: Record<string, unknown> = {};
+function useDraftState<T>(key: string, initial: T) {
+  const [value, setValue] = useState<T>(() => (key in exportDraft ? (exportDraft[key] as T) : initial));
+  const update = useCallback(
+    (next: SetStateAction<T>) => {
+      setValue((previous) => {
+        const resolved = typeof next === 'function' ? (next as (value: T) => T)(previous) : next;
+        exportDraft[key] = resolved;
+        return resolved;
+      });
+    },
+    [key],
+  );
+  return [value, update] as const;
+}
 
 export function useExportSettings() {
-  const [fileFormat, setFileFormat] = useState('jpeg');
-  const [jpegQuality, setJpegQuality] = useState(90);
-  const [tiffBitDepth, setTiffBitDepth] = useState<TiffBitDepth>(16);
-  const [enableResize, setEnableResize] = useState(false);
-  const [resizeMode, setResizeMode] = useState('longEdge');
-  const [resizeValue, setResizeValue] = useState(2048);
-  const [dontEnlarge, setDontEnlarge] = useState(true);
-  const [keepMetadata, setKeepMetadata] = useState(true);
-  const [preserveTimestamps, setPreserveTimestamps] = useState(false);
-  const [stripGps, setStripGps] = useState(true);
-  const [exportMasks, setExportMasks] = useState(false);
-  const [preserveFolders, setPreserveFolders] = useState(false);
-  const [filenameTemplate, setFilenameTemplate] = useState('{original_filename}_edited');
-  const [enableWatermark, setEnableWatermark] = useState(false);
-  const [watermarkPath, setWatermarkPath] = useState<string | null>(null);
-  const [watermarkAnchor, setWatermarkAnchor] = useState<WatermarkAnchor>(WatermarkAnchor.BottomRight);
-  const [watermarkScale, setWatermarkScale] = useState(10);
-  const [watermarkSpacing, setWatermarkSpacing] = useState(5);
-  const [watermarkOpacity, setWatermarkOpacity] = useState(75);
-  const [destinationType, setDestinationType] = useState<string>('customFolder');
-  const [subfolder, setSubfolder] = useState<string>('');
+  const [fileFormat, setFileFormat] = useDraftState('fileFormat', 'jpeg');
+  const [jpegQuality, setJpegQuality] = useDraftState('jpegQuality', 90);
+  const [tiffBitDepth, setTiffBitDepth] = useDraftState<TiffBitDepth>('tiffBitDepth', 16);
+  const [pngBitDepth, setPngBitDepth] = useDraftState<PngBitDepth>('pngBitDepth', 8);
+  const [enableResize, setEnableResize] = useDraftState('enableResize', false);
+  const [resizeMode, setResizeMode] = useDraftState('resizeMode', 'longEdge');
+  const [resizeValue, setResizeValue] = useDraftState('resizeValue', 2048);
+  const [dontEnlarge, setDontEnlarge] = useDraftState('dontEnlarge', true);
+  const [keepMetadata, setKeepMetadata] = useDraftState('keepMetadata', true);
+  const [preserveTimestamps, setPreserveTimestamps] = useDraftState('preserveTimestamps', false);
+  const [stripGps, setStripGps] = useDraftState('stripGps', true);
+  const [exportMasks, setExportMasks] = useDraftState('exportMasks', false);
+  const [preserveFolders, setPreserveFolders] = useDraftState('preserveFolders', false);
+  const [filenameTemplate, setFilenameTemplate] = useDraftState('filenameTemplate', '{original_filename}_edited');
+  const [enableWatermark, setEnableWatermark] = useDraftState('enableWatermark', false);
+  const [watermarkPath, setWatermarkPath] = useDraftState<string | null>('watermarkPath', null);
+  const [watermarkAnchor, setWatermarkAnchor] = useDraftState<WatermarkAnchor>(
+    'watermarkAnchor',
+    WatermarkAnchor.BottomRight,
+  );
+  const [watermarkScale, setWatermarkScale] = useDraftState('watermarkScale', 10);
+  const [watermarkSpacing, setWatermarkSpacing] = useDraftState('watermarkSpacing', 5);
+  const [watermarkOpacity, setWatermarkOpacity] = useDraftState('watermarkOpacity', 75);
+  const [destinationType, setDestinationType] = useDraftState<string>('destinationType', 'customFolder');
+  const [subfolder, setSubfolder] = useDraftState<string>('subfolder', '');
 
   const handleApplyPreset = useCallback((preset: ExportPreset) => {
     setFileFormat(preset.fileFormat);
     setJpegQuality(preset.jpegQuality);
     setTiffBitDepth(preset.tiffBitDepth ?? 16);
+    setPngBitDepth(preset.pngBitDepth ?? 8);
     setEnableResize(preset.enableResize);
     setResizeMode(preset.resizeMode);
     setResizeValue(preset.resizeValue);
@@ -53,6 +75,7 @@ export function useExportSettings() {
       fileFormat,
       jpegQuality,
       tiffBitDepth,
+      pngBitDepth,
       enableResize,
       resizeMode,
       resizeValue,
@@ -76,6 +99,7 @@ export function useExportSettings() {
       fileFormat,
       jpegQuality,
       tiffBitDepth,
+      pngBitDepth,
       enableResize,
       resizeMode,
       resizeValue,
@@ -103,7 +127,9 @@ export function useExportSettings() {
     jpegQuality,
     setJpegQuality,
     tiffBitDepth,
+    pngBitDepth,
     setTiffBitDepth,
+    setPngBitDepth,
     enableResize,
     setEnableResize,
     resizeMode,

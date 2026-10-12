@@ -345,6 +345,45 @@ fn parse_raw_creation_date(date_str: Option<&str>) -> Option<DateTime<Utc>> {
     parse_creation_datetime(date_str?).map(creation_datetime_to_utc)
 }
 
+#[cfg(test)]
+mod metadata_reuse_tests {
+    use super::*;
+
+    #[test]
+    fn metadata_string_conversion_preserves_existing_spacing_and_ascii_parts() {
+        let mut field = exif::Field {
+            tag: exif::Tag::Model,
+            ifd_num: exif::In::PRIMARY,
+            value: exif::Value::Ascii(vec![b"\0 Camera \0".to_vec(), b"Model\0".to_vec()]),
+        };
+        assert_eq!(metadata_string_value(&field), " Camera  Model");
+        field.value = exif::Value::Short(vec![42]);
+        assert_eq!(metadata_string_value(&field), "42");
+    }
+}
+
+fn metadata_string_value(field: &exif::Field) -> String {
+    // Metadata writing preserves spaces and empty ASCII components. Display
+    // normalization in clean_ascii_value intentionally trims those instead.
+    match &field.value {
+        exif::Value::Ascii(components) => components
+            .iter()
+            .map(|value| {
+                String::from_utf8_lossy(value)
+                    .trim_matches(char::from(0))
+                    .to_string()
+            })
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => field
+            .display_value()
+            .to_string()
+            .replace("\"", "")
+            .trim()
+            .to_string(),
+    }
+}
+
 fn clean_ascii_value(value: &exif::Value) -> Option<String> {
     let exif::Value::Ascii(ref components) = *value else {
         return None;
@@ -536,6 +575,9 @@ pub fn extract_metadata(file_bytes: &[u8]) -> Option<HashMap<String, String>> {
 
     if let Some(exif_obj) = read_exif(file_bytes) {
         for field in exif_obj.fields() {
+            if matches!(&field.value, exif::Value::Undefined(..)) {
+                continue;
+            }
             match field.tag {
                 exif::Tag::ExposureTime => {
                     if let exif::Value::Rational(ref v) = field.value
@@ -1096,26 +1138,6 @@ fn apply_gps_from_kamadak(metadata: &mut Metadata, original_path: &Path) {
         return;
     };
 
-    let get_string_val = |field: &exif::Field| -> String {
-        match &field.value {
-            exif::Value::Ascii(vec) => vec
-                .iter()
-                .map(|v| {
-                    String::from_utf8_lossy(v)
-                        .trim_matches(char::from(0))
-                        .to_string()
-                })
-                .collect::<Vec<String>>()
-                .join(" "),
-            _ => field
-                .display_value()
-                .to_string()
-                .replace("\"", "")
-                .trim()
-                .to_string(),
-        }
-    };
-
     if let Some(f) = exif_obj.get_field(exif::Tag::GPSLatitude, exif::In::PRIMARY)
         && let exif::Value::Rational(v) = &f.value
         && v.len() >= 3
@@ -1127,7 +1149,7 @@ fn apply_gps_from_kamadak(metadata: &mut Metadata, original_path: &Path) {
         ]));
     }
     if let Some(f) = exif_obj.get_field(exif::Tag::GPSLatitudeRef, exif::In::PRIMARY) {
-        metadata.set_tag(ExifTag::GPSLatitudeRef(get_string_val(f)));
+        metadata.set_tag(ExifTag::GPSLatitudeRef(metadata_string_value(f)));
     }
     if let Some(f) = exif_obj.get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY)
         && let exif::Value::Rational(v) = &f.value
@@ -1140,7 +1162,7 @@ fn apply_gps_from_kamadak(metadata: &mut Metadata, original_path: &Path) {
         ]));
     }
     if let Some(f) = exif_obj.get_field(exif::Tag::GPSLongitudeRef, exif::In::PRIMARY) {
-        metadata.set_tag(ExifTag::GPSLongitudeRef(get_string_val(f)));
+        metadata.set_tag(ExifTag::GPSLongitudeRef(metadata_string_value(f)));
     }
     if let Some(f) = exif_obj.get_field(exif::Tag::GPSAltitude, exif::In::PRIMARY)
         && let exif::Value::Rational(v) = &f.value
@@ -1359,49 +1381,29 @@ pub fn write_image_with_metadata(
         if let Ok(exif_obj) = exifreader.read_from_container(&mut bufreader) {
             source_read_success = true;
 
-            let get_string_val = |field: &exif::Field| -> String {
-                match &field.value {
-                    exif::Value::Ascii(vec) => vec
-                        .iter()
-                        .map(|v| {
-                            String::from_utf8_lossy(v)
-                                .trim_matches(char::from(0))
-                                .to_string()
-                        })
-                        .collect::<Vec<String>>()
-                        .join(" "),
-                    _ => field
-                        .display_value()
-                        .to_string()
-                        .replace("\"", "")
-                        .trim()
-                        .to_string(),
-                }
-            };
-
             if let Some(f) = exif_obj.get_field(exif::Tag::Make, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::Make(get_string_val(f)));
+                metadata.set_tag(ExifTag::Make(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::Model, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::Model(get_string_val(f)));
+                metadata.set_tag(ExifTag::Model(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::LensMake, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::LensMake(get_string_val(f)));
+                metadata.set_tag(ExifTag::LensMake(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::LensModel, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::LensModel(get_string_val(f)));
+                metadata.set_tag(ExifTag::LensModel(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::Artist, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::Artist(get_string_val(f)));
+                metadata.set_tag(ExifTag::Artist(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::Copyright, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::Copyright(get_string_val(f)));
+                metadata.set_tag(ExifTag::Copyright(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::DateTimeOriginal, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::DateTimeOriginal(get_string_val(f)));
+                metadata.set_tag(ExifTag::DateTimeOriginal(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::DateTime, exif::In::PRIMARY) {
-                metadata.set_tag(ExifTag::CreateDate(get_string_val(f)));
+                metadata.set_tag(ExifTag::CreateDate(metadata_string_value(f)));
             }
             if let Some(f) = exif_obj.get_field(exif::Tag::FNumber, exif::In::PRIMARY)
                 && let exif::Value::Rational(v) = &f.value
@@ -1620,6 +1622,9 @@ pub fn read_exif_data_from_bytes(path: &str, file_bytes: &[u8]) -> HashMap<Strin
     let mut exif_data = HashMap::new();
     if let Some(exif) = read_exif(file_bytes) {
         for field in exif.fields() {
+            if matches!(&field.value, exif::Value::Undefined(..)) {
+                continue;
+            }
             let raw_val = match &field.value {
                 exif::Value::Ascii(_) => match clean_ascii_value(&field.value) {
                     Some(v) => v,

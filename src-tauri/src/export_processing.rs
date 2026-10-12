@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex};
 
 use image::ImageEncoder;
 use image::codecs::jpeg::JpegEncoder;
-use image::codecs::png::PngEncoder;
 use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageFormat, Luma, imageops};
 use jxl_encoder::{
     LosslessConfig, LossyConfig, PixelLayout,
@@ -90,12 +89,18 @@ pub struct ResizeOptions {
     pub dont_enlarge: bool,
 }
 
+fn default_png_bit_depth() -> u8 {
+    8
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportSettings {
     pub jpeg_quality: u8,
     #[serde(default)]
     pub tiff_bit_depth: TiffBitDepth,
+    #[serde(default = "default_png_bit_depth")]
+    pub png_bit_depth: u8,
     pub resize: Option<ResizeOptions>,
     pub keep_metadata: bool,
     #[serde(default)]
@@ -534,6 +539,7 @@ fn render_output_precision(
 ) -> RenderOutputPrecision {
     if matches!(output_format.to_lowercase().as_str(), "tif" | "tiff")
         && export_settings.tiff_bit_depth == TiffBitDepth::Sixteen
+        || output_format.eq_ignore_ascii_case("png") && export_settings.png_bit_depth == 16
     {
         RenderOutputPrecision::SixteenBit
     } else {
@@ -578,6 +584,7 @@ fn save_image_with_metadata(
         &extension,
         export_settings.jpeg_quality,
         export_settings.tiff_bit_depth,
+        export_settings.png_bit_depth,
     )?;
 
     exif_processing::write_image_with_metadata(
@@ -681,6 +688,7 @@ fn encode_image_to_bytes(
     output_format: &str,
     jpeg_quality: u8,
     tiff_bit_depth: TiffBitDepth,
+    png_bit_depth: u8,
 ) -> Result<Vec<u8>, String> {
     let mut image_bytes = Vec::new();
     let mut cursor = Cursor::new(&mut image_bytes);
@@ -738,19 +746,7 @@ fn encode_image_to_bytes(
                 .map_err(|e| e.to_string())?;
         }
         "png" => {
-            let image_to_encode = if image.as_rgb32f().is_some() {
-                DynamicImage::ImageRgb16(image.to_rgb16())
-            } else {
-                image.clone()
-            };
-
-            let mut encoder = PngEncoder::new(&mut cursor);
-            encoder
-                .set_icc_profile(SRGB_ICC_PROFILE.to_vec())
-                .map_err(|e| e.to_string())?;
-            image_to_encode
-                .write_with_encoder(encoder)
-                .map_err(|e| e.to_string())?;
+            return crate::png_export::encode_png(image, png_bit_depth, SRGB_ICC_PROFILE);
         }
         "tif" | "tiff" => {
             let image_to_encode = match tiff_bit_depth {
@@ -1589,6 +1585,7 @@ pub async fn estimate_export_sizes(
             &output_format,
             export_settings.jpeg_quality,
             export_settings.tiff_bit_depth,
+            export_settings.png_bit_depth,
         )?;
         let preview_byte_size = preview_bytes.len();
 
@@ -1725,6 +1722,7 @@ pub async fn estimate_export_sizes(
             &output_format,
             export_settings.jpeg_quality,
             export_settings.tiff_bit_depth,
+            export_settings.png_bit_depth,
         )?;
         let single_image_estimated_size = preview_bytes.len();
 
@@ -1759,8 +1757,8 @@ mod tests {
     fn jpeg_and_png_embed_srgb_profile() {
         use image::ImageDecoder;
         let image = DynamicImage::new_rgb8(4, 4);
-        let jpeg = encode_image_to_bytes(&image, "jpeg", 90, TiffBitDepth::Eight).unwrap();
-        let png = encode_image_to_bytes(&image, "png", 90, TiffBitDepth::Eight).unwrap();
+        let jpeg = encode_image_to_bytes(&image, "jpeg", 90, TiffBitDepth::Eight, 8).unwrap();
+        let png = encode_image_to_bytes(&image, "png", 90, TiffBitDepth::Eight, 8).unwrap();
         let mut jpeg_decoder = image::codecs::jpeg::JpegDecoder::new(Cursor::new(jpeg)).unwrap();
         let mut png_decoder = image::codecs::png::PngDecoder::new(Cursor::new(png)).unwrap();
         assert_eq!(
@@ -1780,13 +1778,13 @@ mod tests {
             1,
             image::Rgb([1024, 32768, 65535]),
         ));
-        let bytes = encode_image_to_bytes(&image, "tiff", 90, TiffBitDepth::Sixteen).unwrap();
+        let bytes = encode_image_to_bytes(&image, "tiff", 90, TiffBitDepth::Sixteen, 8).unwrap();
         let decoded =
             image::load_from_memory_with_format(&bytes, image::ImageFormat::Tiff).unwrap();
         assert_eq!(decoded.color().bits_per_pixel(), 48);
         assert_eq!(decoded.to_rgb16().get_pixel(0, 0).0, [1024, 32768, 65535]);
 
-        let bytes = encode_image_to_bytes(&image, "tiff", 90, TiffBitDepth::Eight).unwrap();
+        let bytes = encode_image_to_bytes(&image, "tiff", 90, TiffBitDepth::Eight, 8).unwrap();
         let decoded =
             image::load_from_memory_with_format(&bytes, image::ImageFormat::Tiff).unwrap();
         assert_eq!(decoded.color().bits_per_pixel(), 24);

@@ -208,7 +208,6 @@ interface UIState {
   bottomPanelHeight: number;
   leftTopHeight: number;
   rightTopHeight: number;
-  compactEditorPanelHeightOverride: number | null;
 
   panelLayout: Record<PanelRegion, Panel[]>;
   activePanels: Record<PanelRegion, Panel | null>;
@@ -270,7 +269,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   bottomPanelHeight: DEFAULT_BOTTOM_PANEL_HEIGHT,
   leftTopHeight: DEFAULT_PANEL_SECTION_HEIGHT,
   rightTopHeight: DEFAULT_PANEL_SECTION_HEIGHT,
-  compactEditorPanelHeightOverride: null,
 
   panelLayout: {
     leftTop: [Panel.Metadata, Panel.Catalog, Panel.Export],

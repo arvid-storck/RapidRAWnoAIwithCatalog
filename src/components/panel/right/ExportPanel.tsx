@@ -210,7 +210,9 @@ export default function ExportPanel({
     jpegQuality,
     setJpegQuality,
     tiffBitDepth,
+    pngBitDepth,
     setTiffBitDepth,
+    setPngBitDepth,
     enableResize,
     setEnableResize,
     resizeMode,
@@ -391,6 +393,7 @@ export default function ExportPanel({
       filenameTemplate,
       jpegQuality,
       tiffBitDepth,
+      pngBitDepth,
       keepMetadata,
       preserveTimestamps,
       preserveFolders,
@@ -436,6 +439,7 @@ export default function ExportPanel({
     fileFormat,
     jpegQuality,
     tiffBitDepth,
+    pngBitDepth,
     enableResize,
     resizeMode,
     resizeValue,
@@ -477,6 +481,7 @@ export default function ExportPanel({
       filenameTemplate,
       jpegQuality,
       tiffBitDepth,
+      pngBitDepth,
       keepMetadata,
       preserveTimestamps,
       preserveFolders,
@@ -635,15 +640,29 @@ export default function ExportPanel({
                   />
                 </div>
               )}
-              {fileFormat === FileFormats.Tiff && (
+              {(fileFormat === FileFormats.Tiff || fileFormat === FileFormats.Png) && (
                 <div className={isExporting ? 'opacity-50 pointer-events-none' : ''}>
                   <Text variant={TextVariants.label} className="mb-1">
-                    {t('export.file.tiffBitDepth')}
+                    {t(fileFormat === FileFormats.Png ? 'export.file.pngBitDepth' : 'export.file.tiffBitDepth')}
                   </Text>
                   <Dropdown
-                    options={tiffBitDepthOptions}
-                    value={String(tiffBitDepth)}
-                    onChange={(value) => setTiffBitDepth(Number(value) as TiffBitDepth)}
+                    options={
+                      fileFormat === FileFormats.Png
+                        ? [1, 2, 4, 8, 16].map((bits) => ({
+                            value: String(bits),
+                            label: t('export.file.pngDepthOption', {
+                              bits,
+                              mode: bits < 8 ? t('export.file.grayscale') : t('export.file.rgb'),
+                            }),
+                          }))
+                        : tiffBitDepthOptions
+                    }
+                    value={String(fileFormat === FileFormats.Png ? pngBitDepth : tiffBitDepth)}
+                    onChange={(value) =>
+                      fileFormat === FileFormats.Png
+                        ? setPngBitDepth(Number(value) as 1 | 2 | 4 | 8 | 16)
+                        : setTiffBitDepth(Number(value) as TiffBitDepth)
+                    }
                     disabled={isExporting}
                     className="w-full"
                   />

@@ -1,4 +1,4 @@
-# RapidRAW code map
+# SlowRAW code map
 
 This is a maintainer's map of the current source tree. It covers hand-maintained
 application files and their responsibilities. Read this alongside the
@@ -6,6 +6,10 @@ user-facing [root README](../README.md) and the separate [changelog](CHANGELOG.m
 This document describes the current implementation.
 
 ## Runtime diagnostics
+
+The application uses the SlowRAW product/executable name. The internal
+`io.github.CyberTimon.RapidRAW` identifier and `rapidraw.db` path preserve existing
+settings and catalog data. Desktop icons are generated from root `icon.png`.
 
 `logging.rs` sends native debug diagnostics to stderr. `RUST_LOG` selects a single
 log level. Release builds, including portable distributions, use
@@ -86,7 +90,21 @@ The resulting bitmap uses the stored brush shape.
 strokes, IDs, visibility, opacity and blend mode while preserving the loaded object.
 The native `legacy_brush_tests` test verifies the same bitmap as an ordinary brush.
 
+### Export bit depth and session state
+
+`useExportSettings.ts` stores export options in a session draft shared across panel
+mounts. PNG supports 1/2/4-bit grayscale and 8/16-bit RGB/RGBA; low-depth scanlines
+are packed in `png_export.rs`. PNG 16-bit uses the GPU's 16-bit render output.
+The metadata panel shows camera/exposure/file details and a collapsed, independently
+scrollable list of additional readable EXIF values. Binary EXIF fields are skipped
+during extraction.
+
 ### Workspace panel layout
+
+`EditorView.tsx` uses the same left/right side-panel layout at every window width.
+`Editor.tsx` preserves the image-space viewport center and physical magnification
+when the workspace size changes. Crop previews request zoom-dependent resolution
+and cache geometry/render output by resolution.
 
 `LibraryView.tsx` and `EditorView.tsx` each own one `PanelVisibilityMenu` within
 their central workspace.
@@ -126,7 +144,7 @@ edit sessions coordinate round trips with other editors.
 
 ## Application overview
 
-This is a customized RapidRAW build focused on local photo management and
+This is a customized SlowRAW build focused on local photo management and
 non-destructive RAW editing.
 
 - SQLite indexes the local photo library.
@@ -220,6 +238,7 @@ are composited during image rendering; the source image remains intact.
 | --- | --- |
 | `scripts/build-portable.ps1` | Builds and packages a portable Windows ZIP in a fresh output folder. |
 | `scripts/clean.mjs` | Removes explicit generated build paths; `--dependencies` also removes node_modules and downloaded ONNX runtime files, with project-boundary and symlink checks. |
+| `scripts/test-desktop-workflow.mjs` | Zoom focus/scale, export-session persistence, metadata and branding regression checks. |
 | `scripts/test-catalog.mjs` | In-memory catalog paging/count/stale-reply, smart-filter editing and album-group creation checks. |
 | `scripts/test-logging.mjs` | Production console suppression, debug console availability and diagnostic configuration checks. |
 | `scripts/test-image-flags.mjs` | In-memory flag selection, write queue and rollback regression checks. |
@@ -267,6 +286,7 @@ are composited during image rendering; the source image remains intact.
 | `hooks/useKeyboardShortcuts.ts` | Application keyboard bindings. |
 | `hooks/useLibraryActions.ts` | Library selection, rating, tag, album, and catalog actions. |
 | `hooks/useOsPlatform.ts` | OS detection for UI choices. |
+| `hooks/usePopover.ts` | Open state, container reference and outside-click/Escape handling for popover menus. |
 | `hooks/useProductivityActions.ts` | Higher-level batch/productivity actions. |
 | `hooks/useSortedLibrary.ts` | Non-catalog sorting, grouping, and filtering. Catalog mode is paged in Rust. |
 | `hooks/useTauriListeners.ts` | Subscribes to backend events and progress notifications. |
@@ -335,6 +355,7 @@ are composited during image rendering; the source image remains intact.
 | `components/ui/AppProperties.tsx` | Shared frontend types, enums, and Tauri command names. |
 | `components/ui/Button.tsx` | Shared button. |
 | `components/ui/CollapsibleSection.tsx` | Expandable settings/control section. |
+| `components/ui/IndeterminateProgress.tsx` | Animated progress indicator shared by HDR, panorama and denoising dialogs. |
 | `components/ui/ColorWheel.tsx` | Color-wheel control. |
 | `components/ui/DepthRangePicker.tsx` | Depth-range selection control. |
 | `components/ui/Dropdown.tsx` | Shared dropdown/select control. |
@@ -402,6 +423,7 @@ are composited during image rendering; the source image remains intact.
 | `hdr_deghosting.rs` | HDR input alignment/deghosting. |
 | `image_loader.rs` | Image decoding/loading, in-process RAW dispatch, Highlight Recovery, and composite preview support. |
 | `highlight_recovery.rs` | Adjustable highlight recovery applied after RAW development. |
+| `png_export.rs` | Packs PNG grayscale scanlines and encodes selectable 1/2/4/8/16-bit output. |
 | `raw_processing.rs` | In-process rawler development, Linear RAW modes, and RAW orientation. |
 | `white_balance.rs` | Camera white-balance metadata, Kelvin/tint conversion, cached references and Bradford adaptation. |
 | `multi_exposure.rs` | Canon in-camera multi-exposure white-balance handling used by RAW development. |
@@ -445,6 +467,30 @@ directly in memory.
 `multi_exposure.rs` and `highlight_recovery.rs` provide additional processing.
 Linear RAW Processing and Highlight Recovery are persisted in `app_settings.rs`.
 
+## Updating RAW engine and rawler EXIF tool
+
+Before compiling, update Rawler and kamadak-exif from the project root:
+
+```powershell
+npm run update:rawler
+```
+
+`Cargo.toml` points to upstream rawler and `Cargo.lock` records the selected
+revision. The command refreshes Rawler and the compatible kamadak-exif version
+selected by Cargo.toml. For a new major/minor EXIF API version, adjust its Cargo.toml
+requirement first. Keep the updated lockfile and compile SlowRAW normally afterward.
+If upstream changes its API, adapt `raw_processing.rs` (development/orientation)
+and `exif_processing.rs` (metadata). `image_loader.rs` receives decoded pixels
+directly in memory.
+`multi_exposure.rs` and `highlight_recovery.rs` provide additional processing.
+Linear RAW Processing and Highlight Recovery are persisted in `app_settings.rs`.
+
+## Update kamadak-exif
+
+```powershell
+npm run update:kamadak-exif
+```
+
 ## Push to github
 
 ```powershell
@@ -466,6 +512,9 @@ npm run lint
 npm run i18n:check
 npm run i18n:lint
 node scripts/test-catalog.mjs
+node scripts/test-desktop-workflow.mjs
+node scripts/test-logging.mjs
+node scripts/test-mask-compat.mjs
 node scripts/test-image-flags.mjs
 node scripts/test-white-balance.mjs
 npm run build
@@ -481,7 +530,7 @@ stale anonymous LLVM symbols in cross-crate `image_hasher` code when linking the
 Windows executable (`LNK2019` followed by `LNK1120`). Dependency artifacts remain
 cached. Keep `CARGO_INCREMENTAL=0` when reproducing the linker issue.
 Native library tests verify the library's test cases. Run
-`cargo build --manifest-path src-tauri/Cargo.toml --bin RapidRAW` to
+`cargo build --manifest-path src-tauri/Cargo.toml --bin SlowRAW` to
 check debug linking, and `npm run tauri -- build --no-bundle` to verify the
 production executable with its embedded frontend.
 
