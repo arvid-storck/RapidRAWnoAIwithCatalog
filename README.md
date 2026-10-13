@@ -137,14 +137,10 @@ Supported desktop platforms:
 You'll need [Rust](https://www.rust-lang.org/tools/install) and [Node.js](https://nodejs.org/).
 
 ```bash
-# 1. Clone the repository
-git clone <YOUR-REPOSITORY-URL>
-cd <YOUR-REPOSITORY-DIRECTORY>
-
-# 2. Install frontend dependencies
+# 1. Install frontend dependencies
 npm ci
 
-# 3. Start the application
+# 2. Start the application
 npm start
 ```
 
