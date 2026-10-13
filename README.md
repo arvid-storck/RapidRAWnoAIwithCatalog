@@ -285,13 +285,3 @@ This project is licensed under the **GNU Affero General Public License v3.0 (AGP
 See the [LICENSE](LICENSE) file for the complete license text.
 
 This repository is based on RapidRAW by CyberTimon and contains substantial modifications.
-
-### Update RAW and EXIF support before compiling
-
-```powershell
-npm run update:metadata
-```
-
-This updates Rawler and kamadak-exif in `src-tauri/Cargo.lock` within the declared
-dependency requirements. Compile normally afterward. PNG export supports
-8/16-bit color.
