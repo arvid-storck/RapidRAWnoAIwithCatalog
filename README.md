@@ -79,12 +79,6 @@ The editing workflow is intentionally focused rather than being expanded into a 
 
 RAW development uses [dnglab / rawler](https://github.com/dnglab/dnglab/tree/main/rawler) linked into SlowRAW. RAW files work immediately after installation; no separate engine, toolchain download, or temporary image file is required at runtime. Linear RAW Processing is available in Settings.
 
-Before compiling, update Rawler and kamadak-exif together from the project root:
-
-```powershell
-npm run update:metadata
-```
-
 This updates the source dependencies within the Cargo.toml requirements and records them in Cargo.lock. Compile SlowRAW normally afterward. See [docs/README.md](docs/README.md#updating-raw-and-exif-dependencies) for integration details and compatibility checks.
 
 ### Separately Updateable Lens Profiles
