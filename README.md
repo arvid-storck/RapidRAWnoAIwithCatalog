@@ -72,15 +72,6 @@ The application keeps the original files on normal local storage while using a d
 
 The editing workflow is intentionally focused rather than being expanded into a cloud or generative-AI platform.
 
-## The Idea
-
-This version grew from a simple goal: combine a straightforward RAW editor with a real local catalog that remains practical as a photo library grows.
-
-The original RapidRAW project provided a strong base for the editor and UI. This version adds a stronger catalog-oriented workflow for large local collections.
-
-The catalog was introduced because large libraries can become difficult to manage efficiently when the application relies mainly on filesystem browsing. A database-backed catalog makes filtering, sorting, metadata queries, albums, and large-library navigation much more practical.
-
-The result is intended to stay simple.
 
 ## RAW Engine & Lens Profiles
 
