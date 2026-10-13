@@ -125,7 +125,6 @@
       "lensBlur": "Lens Blur",
       "lensDiffusion": "Diffusion",
       "lightFlares": "Light Flares",
-      "lut": "LUT",
       "midpoint": "Midpoint",
       "roughness": "Roughness",
       "roundness": "Roundness",
@@ -781,7 +780,6 @@
       "selectFolderTitle_other": "Select Folder to Export {{count}} Images"
     },
     "file": {
-      "grayscale": "Grayscale",
       "pngBitDepth": "PNG bit depth",
       "pngDepthOption": "{{bits}} bit — {{mode}}",
       "quality": "Quality",
@@ -793,9 +791,7 @@
     },
     "labels": {
       "image": "Image",
-      "image_plural": "Images",
-      "lut": "LUT",
-      "lut_plural": "LUTs"
+      "image_plural": "Images"
     },
     "metadata": {
       "removeGps": "Remove GPS Data",
@@ -1034,7 +1030,6 @@
     "useEditorActions": {
       "failed_to_apply_auto_adjustments": "Failed to apply auto adjustments: {{value1}}",
       "failed_to_apply_auto_lens_correction": "Failed to apply auto lens correction: {{value1}}",
-      "failed_to_load_lut": "Failed to load LUT: {{value1}}",
       "failed_to_load_metadata_for_copying": "Failed to load metadata for copying: {{value1}}",
       "failed_to_paste_adjustments": "Failed to paste adjustments: {{value1}}",
       "failed_to_reset_adjustments": "Failed to reset adjustments: {{value1}}",
@@ -1108,7 +1103,6 @@
         "halationGlow": "Halation & Glow",
         "hueShift": "Global Hue Shift",
         "lensCorrection": "Lens Correction",
-        "lut": "LUT",
         "masks": "Masks",
         "noiseReduction": "Noise Reduction",
         "presence": "Presence",
@@ -1824,21 +1818,6 @@
       "filterLabel": "Image Files",
       "select": "Select",
       "selectImageFile": "Select an image file"
-    },
-    "lut": {
-      "clearLut": "Clear LUT",
-      "customLuts": "Custom LUTs",
-      "empty": "No LUTs yet — import some",
-      "filmEmulations": "Film Emulations",
-      "filterLabel": "LUT Files",
-      "import": "Import profiles",
-      "importFailed": "Failed to import LUTs",
-      "intensity": "Intensity",
-      "label": "LUT",
-      "removeLut": "Remove LUT",
-      "select": "Select",
-      "selectLutFile": "Select a LUT file",
-      "unsupportedFormat": "Unsupported file format(s) detected: .{{ext}}"
     },
     "slider": {
       "clickToEdit": "Click to edit",

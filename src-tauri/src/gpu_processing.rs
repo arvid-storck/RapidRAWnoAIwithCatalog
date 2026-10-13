@@ -10,7 +10,6 @@ use tauri::Manager;
 use wgpu::util::{DeviceExt, TextureDataOrder};
 
 use crate::image_processing::{AllAdjustments, GpuContext, MAX_MASKS, MaskAdjustments};
-use crate::lut_processing::Lut;
 use crate::{AppState, GpuImageCache};
 
 #[derive(Clone, Copy, Debug)]
@@ -31,7 +30,6 @@ pub enum RenderOutputPrecision {
 pub struct RenderRequest<'a> {
     pub adjustments: AllAdjustments,
     pub mask_bitmaps: &'a [ImageBuffer<Luma<u8>, Vec<u8>>],
-    pub lut: Option<Arc<Lut>>,
     pub roi: Option<Roi>,
 }
 
@@ -604,8 +602,6 @@ pub struct GpuProcessor {
     tile_output_size: wgpu::Extent3d,
     adjustments_buffer: wgpu::Buffer,
     dummy_blur_view: wgpu::TextureView,
-    dummy_lut_view: wgpu::TextureView,
-    dummy_lut_sampler: wgpu::Sampler,
     ping_pong_view: wgpu::TextureView,
     sharpness_blur_view: wgpu::TextureView,
     tonal_blur_view: wgpu::TextureView,
@@ -722,7 +718,6 @@ mod guided_tests {
                     RenderRequest {
                         adjustments,
                         mask_bitmaps: &[],
-                        lut: None,
                         roi: None,
                     },
                     false,
@@ -1095,23 +1090,6 @@ impl GpuProcessor {
         });
 
         bind_group_layout_entries.push(wgpu::BindGroupLayoutEntry {
-            binding: 3 + MAX_MASK_BINDINGS,
-            visibility: wgpu::ShaderStages::COMPUTE,
-            ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                view_dimension: wgpu::TextureViewDimension::D3,
-                multisampled: false,
-            },
-            count: None,
-        });
-        bind_group_layout_entries.push(wgpu::BindGroupLayoutEntry {
-            binding: 4 + MAX_MASK_BINDINGS,
-            visibility: wgpu::ShaderStages::COMPUTE,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-            count: None,
-        });
-
-        bind_group_layout_entries.push(wgpu::BindGroupLayoutEntry {
             binding: 5 + MAX_MASK_BINDINGS,
             visibility: wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Texture {
@@ -1239,13 +1217,6 @@ impl GpuProcessor {
         };
         let dummy_blur_texture = device.create_texture(&dummy_texture_desc);
         let dummy_blur_view = dummy_blur_texture.create_view(&Default::default());
-
-        let dummy_lut_texture = device.create_texture(&wgpu::TextureDescriptor {
-            dimension: wgpu::TextureDimension::D3,
-            ..dummy_texture_desc
-        });
-        let dummy_lut_view = dummy_lut_texture.create_view(&Default::default());
-        let dummy_lut_sampler = device.create_sampler(&wgpu::SamplerDescriptor::default());
 
         const TILE_SIZE: u32 = 2048;
         const TILE_OVERLAP: u32 = 128;
@@ -1378,8 +1349,6 @@ impl GpuProcessor {
             tile_output_size: clamped_tile_size,
             adjustments_buffer,
             dummy_blur_view,
-            dummy_lut_view,
-            dummy_lut_sampler,
             ping_pong_view,
             sharpness_blur_view,
             tonal_blur_view,
@@ -1746,49 +1715,6 @@ impl GpuProcessor {
             ..Default::default()
         });
 
-        let (lut_texture_view, lut_sampler) = if let Some(lut_arc) = &request.lut {
-            let lut_data = &lut_arc.data;
-            let size = lut_arc.size;
-            let mut rgba_lut_data_f16 = Vec::with_capacity(lut_data.len() / 3 * 4);
-            for chunk in lut_data.as_chunks::<3>().0 {
-                rgba_lut_data_f16.push(f16::from_f32(chunk[0]));
-                rgba_lut_data_f16.push(f16::from_f32(chunk[1]));
-                rgba_lut_data_f16.push(f16::from_f32(chunk[2]));
-                rgba_lut_data_f16.push(f16::ONE);
-            }
-            let lut_texture = device.create_texture_with_data(
-                queue,
-                &wgpu::TextureDescriptor {
-                    label: Some("LUT 3D Texture"),
-                    size: wgpu::Extent3d {
-                        width: size,
-                        height: size,
-                        depth_or_array_layers: size,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D3,
-                    format: wgpu::TextureFormat::Rgba16Float,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                    view_formats: &[],
-                },
-                TextureDataOrder::MipMajor,
-                bytemuck::cast_slice(&rgba_lut_data_f16),
-            );
-            let view = lut_texture.create_view(&Default::default());
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Nearest,
-                min_filter: wgpu::FilterMode::Nearest,
-                ..Default::default()
-            });
-            (view, sampler)
-        } else {
-            (self.dummy_lut_view.clone(), self.dummy_lut_sampler.clone())
-        };
-
         let adjustments = request.adjustments;
         if adjustments.global.flare_amount > 0.0 {
             let mut encoder = device.create_command_encoder(&Default::default());
@@ -2070,14 +1996,6 @@ impl GpuProcessor {
                 bind_group_entries.push(wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::TextureView(&mask_texture_view),
-                });
-                bind_group_entries.push(wgpu::BindGroupEntry {
-                    binding: 3 + MAX_MASK_BINDINGS,
-                    resource: wgpu::BindingResource::TextureView(&lut_texture_view),
-                });
-                bind_group_entries.push(wgpu::BindGroupEntry {
-                    binding: 4 + MAX_MASK_BINDINGS,
-                    resource: wgpu::BindingResource::Sampler(&lut_sampler),
                 });
 
                 bind_group_entries.push(wgpu::BindGroupEntry {

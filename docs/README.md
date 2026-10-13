@@ -8,8 +8,11 @@ This document describes the current implementation.
 ## Runtime diagnostics
 
 The application uses the SlowRAW product/executable name. The internal
-`io.github.CyberTimon.RapidRAW` identifier and `rapidraw.db` path preserve existing
-settings and catalog data. Desktop icons are generated from root `icon.png`.
+`io.github.arvid-storck.SlowRAW` identifier owns its application-data directory.
+Startup copies legacy settings, albums, models and catalog data into the new
+directory once, preserving existing destination files. SQLite catalogs are
+snapshotted with their committed WAL data. Portable builds keep their own data
+directory and `rapidraw.db` path. Desktop icons are generated from root `icon.png`.
 
 `logging.rs` sends native debug diagnostics to stderr. `RUST_LOG` selects a single
 log level. Release builds, including portable distributions, use
@@ -93,8 +96,8 @@ The native `legacy_brush_tests` test verifies the same bitmap as an ordinary bru
 ### Export bit depth and session state
 
 `useExportSettings.ts` stores export options in a session draft shared across panel
-mounts. PNG supports 1/2/4-bit grayscale and 8/16-bit RGB/RGBA; low-depth scanlines
-are packed in `png_export.rs`. PNG 16-bit uses the GPU's 16-bit render output.
+mounts. PNG supports 8/16-bit RGB/RGBA output with an embedded sRGB profile.
+PNG 16-bit uses the GPU's 16-bit render output.
 The metadata panel shows camera/exposure/file details and a collapsed, independently
 scrollable list of additional readable EXIF values. Binary EXIF fields are skipped
 during extraction.
@@ -228,7 +231,7 @@ are composited during image rendering; the source image remains intact.
 | `src-tauri/capabilities/` | Tauri permissions. |
 | `src-tauri/icons/` | App icons. |
 | `src-tauri/lensfun_db/` | Bundled lens profiles; separately updatable at runtime. |
-| `src-tauri/resources/` | Bundled runtime resources, LUTs, licenses, and native libraries. |
+| `src-tauri/resources/` | Bundled runtime resources, licenses, and native libraries. |
 | `data/` | Linux desktop entry and AppStream metadata. |
 | `packaging/` | Linux/Flatpak and dependency-source packaging metadata. |
 
@@ -365,7 +368,6 @@ are composited during image rendering; the source image remains intact.
 | `components/ui/GlobalTooltip.tsx` | Shared tooltip display. |
 | `components/ui/ImagePicker.tsx` | Image selection control. |
 | `components/ui/Input.tsx` | Shared input. |
-| `components/ui/LUTControl.tsx` | LUT selection and strength control. |
 | `components/ui/Resizer.tsx` | Draggable panel divider. |
 | `components/ui/Slider.tsx` | Shared slider. |
 | `components/ui/FlagToggles.tsx` | Bottom-bar Pick/Reject toggles for editor/library selections. |
@@ -423,7 +425,6 @@ are composited during image rendering; the source image remains intact.
 | `hdr_deghosting.rs` | HDR input alignment/deghosting. |
 | `image_loader.rs` | Image decoding/loading, in-process RAW dispatch, Highlight Recovery, and composite preview support. |
 | `highlight_recovery.rs` | Adjustable highlight recovery applied after RAW development. |
-| `png_export.rs` | Packs PNG grayscale scanlines and encodes selectable 1/2/4/8/16-bit output. |
 | `raw_processing.rs` | In-process rawler development, Linear RAW modes, and RAW orientation. |
 | `white_balance.rs` | Camera white-balance metadata, Kelvin/tint conversion, cached references and Bradford adaptation. |
 | `multi_exposure.rs` | Canon in-camera multi-exposure white-balance handling used by RAW development. |
@@ -432,7 +433,6 @@ are composited during image rendering; the source image remains intact.
 | `lens_blur.rs` | Lens/portrait blur processing. |
 | `lens_correction.rs` | Lensfun lookup and optical corrections. |
 | `logging.rs` | Sends debug diagnostics to stderr with the configured log level. |
-| `lut_processing.rs` | LUT parsing/application. |
 | `mask_generation.rs` | Mask definitions/generation with legacy type aliases for sidecar compatibility. |
 | `negative_conversion.rs` | Film-negative conversion. |
 | `panorama_stitching.rs` | Panorama commands and stitching workflow. |

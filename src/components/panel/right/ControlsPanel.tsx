@@ -29,7 +29,7 @@ export default function Controls() {
   const { showContextMenu } = useContextMenu();
   const { isResizingWaveform, onToggleWaveform, setActiveWaveformChannel, handleWaveformResize } =
     useWaveformControls();
-  const { setAdjustments, handleAutoAdjustments, handleLutSelect, setLutPreviewOverride } = useEditorActions();
+  const { setAdjustments, handleAutoAdjustments } = useEditorActions();
 
   const { appSettings, theme } = useSettingsStore(
     useShallow((state) => ({
@@ -310,8 +310,6 @@ export default function Controls() {
                     setAdjustments={setAdjustments}
                     histogram={histogram}
                     theme={theme}
-                    handleLutSelect={handleLutSelect}
-                    onLutHover={setLutPreviewOverride}
                     appSettings={appSettings}
                     isWbPickerActive={isWbPickerActive}
                     toggleWbPicker={toggleWbPicker}

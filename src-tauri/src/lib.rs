@@ -30,13 +30,11 @@ mod lens_blur;
 mod lens_correction;
 #[cfg(debug_assertions)]
 mod logging;
-mod lut_processing;
 mod mask_generation;
 mod multi_exposure;
 mod negative_conversion;
 mod panorama_stitching;
 mod panorama_utils;
-mod png_export;
 mod portable_paths;
 mod raw_processing;
 mod spot_removal;
@@ -488,8 +486,6 @@ fn process_preview_job(
         loaded_image.as_shot_white_balance,
         tm_override,
     );
-    let lut_path = adjustments_clone["lutPath"].as_str();
-    let lut = lut_path.and_then(|p| lut_processing::get_or_load_lut(&state, p).ok());
 
     let wants_analytics = !(is_interactive && pixel_roi.is_some()) && request_analytics;
     let channel_filter = if is_interactive {
@@ -523,7 +519,6 @@ fn process_preview_job(
             RenderRequest {
                 adjustments: final_adjustments,
                 mask_bitmaps: &mask_bitmaps,
-                lut,
                 roi: pixel_roi,
             },
             "apply_adjustments",
@@ -852,8 +847,6 @@ async fn generate_uncropped_preview(
             tm_override,
         );
         uncropped_adjustments.global.show_clipping = 0;
-        let lut_path = adjustments_clone["lutPath"].as_str();
-        let lut = lut_path.and_then(|p| lut_processing::get_or_load_lut(&state, p).ok());
 
         let mut render_hasher = std::collections::hash_map::DefaultHasher::new();
         calculate_full_job_hash(&path, &adjustments_clone).hash(&mut render_hasher);
@@ -868,7 +861,6 @@ async fn generate_uncropped_preview(
             RenderRequest {
                 adjustments: uncropped_adjustments,
                 mask_bitmaps: &mask_bitmaps,
-                lut,
                 roi: None,
             },
             "generate_uncropped_preview",
@@ -1109,8 +1101,6 @@ async fn generate_preview_for_path(
             tm_override,
         );
         all_adjustments.global.show_clipping = 0;
-        let lut_path = js_adjustments["lutPath"].as_str();
-        let lut = lut_path.and_then(|p| lut_processing::get_or_load_lut(&state, p).ok());
         let unique_hash = calculate_full_job_hash(&source_path_str, &js_adjustments);
 
         let final_image = process_and_get_dynamic_image(
@@ -1121,7 +1111,6 @@ async fn generate_preview_for_path(
             RenderRequest {
                 adjustments: all_adjustments,
                 mask_bitmaps: &mask_bitmaps,
-                lut,
                 roi: None,
             },
             "generate_preview_for_path",
@@ -1372,9 +1361,8 @@ pub fn run() {
             }
 
             let app_handle = app.handle().clone();
-            if let Err(error) = portable_paths::migrate_legacy_portable_data(&app_handle) {
-                log::warn!("Could not migrate previous portable data: {error}");
-            }
+            portable_paths::migrate_legacy_app_data(&app_handle)
+                .map_err(std::io::Error::other)?;
             component_updates::initialize_component_environment(&app_handle);
 
             if let Ok(cache_dir) = app_handle.path().app_cache_dir() {
@@ -1657,7 +1645,6 @@ pub fn run() {
             focus_stack_result: Arc::new(Mutex::new(None)),
             denoise_result: Arc::new(Mutex::new(None)),
             indexing_task_handle: Mutex::new(None),
-            lut_cache: Mutex::new(HashMap::new()),
             initial_file_path: Mutex::new(None),
             pending_edit_session: Mutex::new(None),
             thumbnail_cancellation_token: Arc::new(AtomicBool::new(false)),
@@ -1685,11 +1672,6 @@ pub fn run() {
             save_collage,
             merge_hdr,
             save_hdr,
-            lut_processing::load_and_parse_lut,
-            lut_processing::list_luts,
-            lut_processing::import_luts,
-            lut_processing::remove_lut,
-            lut_processing::generate_lut_previews,
             get_image_dimensions,
             frontend_ready,
             cancel_thumbnail_generation,

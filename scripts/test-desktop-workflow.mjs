@@ -52,11 +52,14 @@ const react = {
 };
 const { useExportSettings } = load('src/hooks/useExportSettings.ts', {
   react,
-  '../components/ui/ExportImportProperties': { WatermarkAnchor: { BottomRight: 'bottom-right' } },
+  '../components/ui/ExportImportProperties': {
+    WatermarkAnchor: { BottomRight: 'bottom-right' },
+    FILE_FORMATS: [{ id: 'jpeg' }, { id: 'png' }, { id: 'tiff' }],
+  },
 });
 const draft = useExportSettings();
 draft.setFileFormat('png');
-draft.setPngBitDepth(4);
+draft.setPngBitDepth(16);
 draft.setJpegQuality(72);
 draft.setResizeValue(1234);
 draft.setFilenameTemplate('session-test');
@@ -65,11 +68,17 @@ states = [];
 cursor = 0;
 const reopened = useExportSettings();
 assert.equal(reopened.fileFormat, 'png');
-assert.equal(reopened.pngBitDepth, 4);
+assert.equal(reopened.pngBitDepth, 16);
 assert.equal(reopened.jpegQuality, 72);
 assert.equal(reopened.resizeValue, 1234);
 assert.equal(reopened.filenameTemplate, 'session-test');
 assert.equal(reopened.stripGps, false);
+reopened.handleApplyPreset({ ...reopened.currentSettingsObject, fileFormat: 'cube', pngBitDepth: 4 });
+states = [];
+cursor = 0;
+const migrated = useExportSettings();
+assert.equal(migrated.fileFormat, 'jpeg');
+assert.equal(migrated.pngBitDepth, 8);
 assert.doesNotMatch(read('src/App.tsx'), /COMPACT_EDITOR_MAX_WIDTH|useCompactPanels|compactEditorPanel/);
 assert.doesNotMatch(read('src/components/panel/right/MetadataPanel.tsx'), /openstreetmap|<iframe/);
 assert.match(read('src/components/panel/right/MetadataPanel.tsx'), /<details key=\{selectedImage.path\}/);

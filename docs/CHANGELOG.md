@@ -1,5 +1,7 @@
 <details>
 
+- **2026-10-13 — Identity, export and LUT cleanup:** Set the author to Arvid Storck, chatgpt; renamed desktop/Flatpak files and the application ID to io.github.arvid-storck.SlowRAW. Startup copies legacy application data without overwriting existing destination files and snapshots SQLite catalogs. Export formats use a dropdown list; PNG offers 8/16-bit color output. Removed LUT editing/import, CUBE export, parser/cache, GPU textures and shader application, obsolete controls/translations and the low-bit PNG helper. Original images and existing exports remain unchanged; saved LUT-based edits render without their former LUT effect. Updated the implementation documentation and thumbnail-cache revision.
+
 - **2026-10-12 — Clean command rename fix:** Updated the cleanup script's package-name guard to SlowRAW. Project-boundary and symbolic-link checks remain in place. Verified both cleanup modes with dry runs.
 
 - **2026-10-12 — Simpler cleanup revision:** Restored the analytics layout directly in its two panels, replaced the parameterized dismissal helper with a self-contained usePopover hook, inlined the two trivial EXIF binary checks and removed the added shared-UI test harness. Kept the shared progress indicator and metadata-string conversion. The affected production files are 47 lines shorter than before the initial shared-code refactor, excluding tests/documentation. Updated the code map and verified popover dismissal with a temporary check.

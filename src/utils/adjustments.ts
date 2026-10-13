@@ -77,12 +77,6 @@ export enum Effect {
   GrainAmount = 'grainAmount',
   GrainRoughness = 'grainRoughness',
   GrainSize = 'grainSize',
-  LutData = 'lutData',
-  LutIntensity = 'lutIntensity',
-  LutName = 'lutName',
-  LutPath = 'lutPath',
-  LutSize = 'lutSize',
-  LutIsSceneReferred = 'lutIsSceneReferred',
   VignetteAmount = 'vignetteAmount',
   VignetteFeather = 'vignetteFeather',
   VignetteMidpoint = 'vignetteMidpoint',
@@ -235,12 +229,6 @@ export interface Adjustments {
   lensMaker: string | null;
   lensModel: string | null;
   lumaNoiseReduction: number;
-  lutData?: string | null;
-  lutIntensity?: number;
-  lutName?: string | null;
-  lutPath?: string | null;
-  lutSize?: number;
-  lutIsSceneReferred?: boolean;
   masks: Array<MaskContainer>;
   orientationSteps: number;
   rotation: number;
@@ -570,12 +558,6 @@ export const INITIAL_ADJUSTMENTS: Adjustments = {
   lensMaker: null,
   lensModel: null,
   lumaNoiseReduction: 0,
-  lutData: null,
-  lutIntensity: 100,
-  lutName: null,
-  lutPath: null,
-  lutSize: 0,
-  lutIsSceneReferred: false,
   masks: [],
   orientationSteps: 0,
   rotation: 0,
@@ -720,7 +702,6 @@ export const normalizeLoadedAdjustments = (loadedAdjustments: Adjustments): any 
       })(),
       autoCrop: loadedAdjustments.guidedPerspective?.autoCrop ?? true,
     },
-    lutIsSceneReferred: loadedAdjustments.lutIsSceneReferred ?? false,
     flareAmount: loadedAdjustments.flareAmount ?? INITIAL_ADJUSTMENTS.flareAmount,
     glowAmount: loadedAdjustments.glowAmount ?? INITIAL_ADJUSTMENTS.glowAmount,
     halationAmount: loadedAdjustments.halationAmount ?? INITIAL_ADJUSTMENTS.halationAmount,
@@ -841,17 +822,6 @@ export const ADJUSTMENT_GROUPS: Record<string, AdjustmentGroup[]> = {
       label: 'modals.copyPaste.groups.halationGlow',
       keys: [CreativeAdjustment.GlowAmount, CreativeAdjustment.HalationAmount, CreativeAdjustment.FlareAmount],
     },
-    {
-      label: 'modals.copyPaste.groups.lut',
-      keys: [
-        Effect.LutIntensity,
-        Effect.LutName,
-        Effect.LutPath,
-        Effect.LutSize,
-        Effect.LutData,
-        Effect.LutIsSceneReferred,
-      ],
-    },
   ],
   geometry: [
     { label: 'modals.copyPaste.groups.cropAspectRatio', keys: ['crop', 'aspectRatio'] },
@@ -938,11 +908,6 @@ export const ADJUSTMENT_SECTIONS: Sections = {
     Effect.GrainAmount,
     Effect.GrainRoughness,
     Effect.GrainSize,
-    Effect.LutIntensity,
-    Effect.LutName,
-    Effect.LutPath,
-    Effect.LutSize,
-    Effect.LutIsSceneReferred,
     Effect.VignetteAmount,
     Effect.VignetteFeather,
     Effect.VignetteMidpoint,
@@ -1001,7 +966,6 @@ export const ADJUSTMENT_SECTION_TOOLS: Record<string, Array<AdjustmentSectionToo
   ],
   effects: [
     { id: 'creative', label: 'adjustments.effects.creative' },
-    { id: 'lut', label: 'adjustments.effects.lut' },
     { id: 'vignette', label: 'adjustments.effects.vignette' },
     { id: 'grain', label: 'adjustments.effects.grain' },
   ],

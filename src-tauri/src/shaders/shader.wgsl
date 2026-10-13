@@ -67,14 +67,9 @@ struct GlobalAdjustments {
     show_clipping: u32,
     is_raw_image: u32,
     _pad_ca1: f32,
-
-    has_lut: u32,
-    lut_intensity: f32,
     tonemapper_mode: u32,
-    lut_is_scene_referred: u32,
-    _pad_lut3: f32,
-    _pad_lut4: f32,
-    _pad_lut5: f32,
+    _pad_tone1: f32,
+    _pad_tone2: f32,
 
     _pad_agx1: f32,
     _pad_agx2: f32,
@@ -202,8 +197,6 @@ const HSL_RANGES: array<HslRange, 8> = array<HslRange, 8>(
 
 @group(0) @binding(3) var mask_textures: texture_2d_array<f32>;
 
-@group(0) @binding(4) var lut_texture: texture_3d<f32>;
-@group(0) @binding(5) var lut_sampler: sampler;
 
 @group(0) @binding(6) var sharpness_blur_texture: texture_2d<f32>;
 @group(0) @binding(7) var tonal_blur_texture: texture_2d<f32>;
@@ -263,13 +256,6 @@ fn linear_to_srgb_extended(c: vec3<f32>) -> vec3<f32> {
     return select(higher, lower, safe_c <= cutoff);
 }
 
-fn linear_to_vlog(c: vec3<f32>) -> vec3<f32> {
-    let safe_c = max(c, vec3<f32>(0.0));
-    let low = 5.6 * safe_c + 0.125;
-    let log10_val = log2(safe_c + 0.00873) * 0.30102999566398;
-    let high = 0.241514 * log10_val + 0.598206;
-    return select(high, low, safe_c <= vec3<f32>(0.01));
-}
 
 fn rgb_to_hsv(c: vec3<f32>) -> vec3<f32> {
     let c_max = max(c.r, max(c.g, c.b));
@@ -1452,75 +1438,6 @@ fn get_mask_influence(mask_index: u32, coords: vec2<u32>) -> f32 {
     return textureLoad(mask_textures, vec2<i32>(coords), i32(mask_index), 0).r;
 }
 
-fn sample_lut_tetrahedral(uv: vec3<f32>) -> vec3<f32> {
-    let dims = vec3<f32>(textureDimensions(lut_texture));
-    let size = dims - vec3<f32>(1.0);
-    let scaled = clamp(uv, vec3<f32>(0.0), vec3<f32>(1.0)) * size;
-    let i_base = floor(scaled);
-    let f = scaled - i_base;
-    let coord0 = vec3<i32>(i_base);
-    let coord1 = min(coord0 + vec3<i32>(1), vec3<i32>(dims) - vec3<i32>(1));
-    let c000 = textureLoad(lut_texture, coord0, 0).rgb;
-    let c111 = textureLoad(lut_texture, coord1, 0).rgb;
-
-    var res = vec3<f32>(0.0);
-
-    if (f.r > f.g) {
-        if (f.g > f.b) {
-            let c100 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord0.y, coord0.z), 0).rgb;
-            let c110 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord1.y, coord0.z), 0).rgb;
-
-            res = c000 * (1.0 - f.r) +
-                  c100 * (f.r - f.g) +
-                  c110 * (f.g - f.b) +
-                  c111 * (f.b);
-        } else if (f.r > f.b) {
-            let c100 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord0.y, coord0.z), 0).rgb;
-            let c101 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord0.y, coord1.z), 0).rgb;
-
-            res = c000 * (1.0 - f.r) +
-                  c100 * (f.r - f.b) +
-                  c101 * (f.b - f.g) +
-                  c111 * (f.g);
-        } else {
-            let c001 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord0.y, coord1.z), 0).rgb;
-            let c101 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord0.y, coord1.z), 0).rgb;
-
-            res = c000 * (1.0 - f.b) +
-                  c001 * (f.b - f.r) +
-                  c101 * (f.r - f.g) +
-                  c111 * (f.g);
-        }
-    } else {
-        if (f.b > f.g) {
-            let c001 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord0.y, coord1.z), 0).rgb;
-            let c011 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord1.y, coord1.z), 0).rgb;
-
-            res = c000 * (1.0 - f.b) +
-                  c001 * (f.b - f.g) +
-                  c011 * (f.g - f.r) +
-                  c111 * (f.r);
-        } else if (f.b > f.r) {
-            let c010 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord1.y, coord0.z), 0).rgb;
-            let c011 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord1.y, coord1.z), 0).rgb;
-
-            res = c000 * (1.0 - f.g) +
-                  c010 * (f.g - f.b) +
-                  c011 * (f.b - f.r) +
-                  c111 * (f.r);
-        } else {
-            let c010 = textureLoad(lut_texture, vec3<i32>(coord0.x, coord1.y, coord0.z), 0).rgb;
-            let c110 = textureLoad(lut_texture, vec3<i32>(coord1.x, coord1.y, coord0.z), 0).rgb;
-
-            res = c000 * (1.0 - f.g) +
-                  c010 * (f.g - f.r) +
-                  c110 * (f.r - f.b) +
-                  c111 * (f.b);
-        }
-    }
-
-    return res;
-}
 
 fn apply_glow_bloom(
     color: vec3<f32>,
@@ -1905,16 +1822,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     } else {
         default_tonemapped = linear_to_srgb(composite_rgb_linear);
     }
-    var base_srgb: vec3<f32>;
-    let is_scene_lut = (adjustments.global.has_lut == 1u && adjustments.global.lut_is_scene_referred == 1u);
-
-    if (is_scene_lut) {
-        let vlog_encoded = linear_to_vlog(composite_rgb_linear);
-        let lut_color = sample_lut_tetrahedral(vlog_encoded);
-        base_srgb = mix(default_tonemapped, lut_color, adjustments.global.lut_intensity);
-    } else {
-        base_srgb = default_tonemapped;
-    }
+    var base_srgb = default_tonemapped;
 
     base_srgb = apply_filmic_exposure(base_srgb, t_brightness);
 
@@ -1939,10 +1847,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
     }
 
-    if (adjustments.global.has_lut == 1u && adjustments.global.lut_is_scene_referred == 0u) {
-        let lut_color = sample_lut_tetrahedral(final_rgb);
-        final_rgb = mix(final_rgb, lut_color, adjustments.global.lut_intensity);
-    }
 
     if (adjustments.global.grain_amount > 0.0) {
         let coord = vec2<f32>(absolute_coord_i);

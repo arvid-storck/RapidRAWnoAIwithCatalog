@@ -20,6 +20,8 @@ But all i found had atleast one of the following:
 
 ## What This Version Is
 
+Author: Arvid Storck, chatgpt.
+
 This version focuses on the core photographic workflow:
 
 - **Local SQLite catalog** for large photo libraries
@@ -292,4 +294,4 @@ npm run update:metadata
 
 This updates Rawler and kamadak-exif in `src-tauri/Cargo.lock` within the declared
 dependency requirements. Compile normally afterward. PNG export supports
-1/2/4-bit grayscale and 8/16-bit color.
+8/16-bit color.

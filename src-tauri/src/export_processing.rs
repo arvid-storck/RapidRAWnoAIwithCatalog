@@ -29,11 +29,8 @@ use crate::image_loader::{
 };
 use crate::image_processing::{
     AllAdjustments, Crop, GpuContext, RenderOutputPrecision, RenderRequest, downscale_f32_image,
-    get_all_adjustments_from_json, get_or_init_gpu_context, process_and_get_dynamic_image,
+    get_all_adjustments_from_json, get_or_init_gpu_context,
     process_and_get_dynamic_image_with_precision, resolve_tonemapper_override_from_handle,
-};
-use crate::lut_processing::{
-    convert_image_to_cube_lut, generate_identity_lut_image, get_or_load_lut,
 };
 use crate::mask_generation::{MaskDefinition, generate_mask_bitmap};
 
@@ -512,9 +509,6 @@ fn process_image_for_export_pipeline(
     );
     all_adjustments.global.show_clipping = 0;
 
-    let lut_path = js_adjustments["lutPath"].as_str();
-    let lut = lut_path.and_then(|p| get_or_load_lut(state, p).ok());
-
     let unique_hash = calculate_full_job_hash(path, js_adjustments);
 
     process_and_get_dynamic_image_with_precision(
@@ -525,7 +519,6 @@ fn process_image_for_export_pipeline(
         RenderRequest {
             adjustments: all_adjustments,
             mask_bitmaps: &mask_bitmaps,
-            lut,
             roi: None,
         },
         debug_tag,
@@ -746,7 +739,20 @@ fn encode_image_to_bytes(
                 .map_err(|e| e.to_string())?;
         }
         "png" => {
-            return crate::png_export::encode_png(image, png_bit_depth, SRGB_ICC_PROFILE);
+            let output = match (png_bit_depth, image.color().has_alpha()) {
+                (8, false) => DynamicImage::ImageRgb8(image.to_rgb8()),
+                (8, true) => DynamicImage::ImageRgba8(image.to_rgba8()),
+                (16, false) => DynamicImage::ImageRgb16(image.to_rgb16()),
+                (16, true) => DynamicImage::ImageRgba16(image.to_rgba16()),
+                _ => return Err("PNG bit depth must be 8 or 16.".to_string()),
+            };
+            let mut encoder = image::codecs::png::PngEncoder::new(&mut cursor);
+            encoder
+                .set_icc_profile(SRGB_ICC_PROFILE.to_vec())
+                .map_err(|e| e.to_string())?;
+            output
+                .write_with_encoder(encoder)
+                .map_err(|e| e.to_string())?;
         }
         "tif" | "tiff" => {
             let image_to_encode = match tiff_bit_depth {
@@ -815,8 +821,6 @@ fn export_masks_for_image(
             crate::white_balance::as_shot_white_balance(source_path_str),
             tm_override,
         );
-        let lut_path = js_adjustments["lutPath"].as_str();
-        let lut = lut_path.and_then(|p| get_or_load_lut(state, p).ok());
         let unique_hash = calculate_full_job_hash(source_path_str, js_adjustments);
         let output_dir = output_path_obj.parent().unwrap_or(output_path_obj);
         let stem = output_path_obj
@@ -842,7 +846,6 @@ fn export_masks_for_image(
                 RenderRequest {
                     adjustments: single_adjustments,
                     mask_bitmaps: &single_bitmaps,
-                    lut: lut.clone(),
                     roi: None,
                 },
                 "export_mask_image",
@@ -898,66 +901,6 @@ fn export_masks_for_image(
         }
     }
     Ok(())
-}
-
-fn export_adjustments_as_lut(
-    js_adjustments: &Value,
-    source_path_str: &str,
-    context: &Arc<GpuContext>,
-    state: &tauri::State<AppState>,
-    app_handle: &tauri::AppHandle,
-    cancellation_token: &AtomicBool,
-) -> Result<Vec<u8>, String> {
-    ensure_export_not_cancelled(cancellation_token)?;
-    let lut_size = 33;
-    let identity_image = generate_identity_lut_image(lut_size);
-
-    let tm_override = resolve_tonemapper_override_from_handle(app_handle, false);
-    let mut all_adjustments = get_all_adjustments_from_json(
-        js_adjustments,
-        false,
-        crate::white_balance::WhiteBalance::reference(),
-        tm_override,
-    );
-
-    all_adjustments.global.show_clipping = 0;
-    all_adjustments.global.vignette_amount = 0.0;
-    all_adjustments.global.grain_amount = 0.0;
-    all_adjustments.global.sharpness = 0.0;
-    all_adjustments.global.clarity = 0.0;
-    all_adjustments.global.dehaze = 0.0;
-    all_adjustments.global.structure = 0.0;
-    all_adjustments.global.centré = 0.0;
-    all_adjustments.global.glow_amount = 0.0;
-    all_adjustments.global.halation_amount = 0.0;
-    all_adjustments.global.flare_amount = 0.0;
-    all_adjustments.global.luma_noise_reduction = 0.0;
-    all_adjustments.global.color_noise_reduction = 0.0;
-    all_adjustments.global.chromatic_aberration_red_cyan = 0.0;
-    all_adjustments.global.chromatic_aberration_blue_yellow = 0.0;
-
-    let lut_path = js_adjustments["lutPath"].as_str();
-    let lut = lut_path.and_then(|p| get_or_load_lut(state, p).ok());
-    let unique_hash = calculate_full_job_hash(source_path_str, js_adjustments);
-
-    let processed_lut = process_and_get_dynamic_image(
-        context,
-        state,
-        &identity_image,
-        unique_hash,
-        RenderRequest {
-            adjustments: all_adjustments,
-            mask_bitmaps: &[],
-            lut,
-            roi: None,
-        },
-        "export_lut",
-    )?;
-    ensure_export_not_cancelled(cancellation_token)?;
-
-    let cube_lut = convert_image_to_cube_lut(&processed_lut, lut_size)?;
-    ensure_export_not_cancelled(cancellation_token)?;
-    Ok(cube_lut)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1199,34 +1142,6 @@ async fn export_images_impl(
                 }
 
                 let result: Result<(), String> = (|| {
-                    if extension == "cube" {
-                        let cube_bytes = export_adjustments_as_lut(
-                            &js_adjustments,
-                            &source_path_str,
-                            &context_clone,
-                            &state,
-                            &app_handle_clone,
-                            &cancellation_token_clone,
-                        )?;
-                        ensure_export_not_cancelled(&cancellation_token_clone)?;
-                        #[cfg(target_os = "android")]
-                        {
-                            let file_name = output_path
-                                .file_name()
-                                .and_then(|name| name.to_str())
-                                .ok_or_else(|| "Missing Android LUT file name".to_string())?;
-                            crate::android_integration::save_file_bytes_to_android_downloads(
-                                file_name,
-                                "application/octet-stream",
-                                &cube_bytes,
-                            )?;
-                        }
-                        #[cfg(not(target_os = "android"))]
-                        fs::write(&output_path, cube_bytes).map_err(|e| e.to_string())?;
-                        ensure_export_not_cancelled(&cancellation_token_clone)?;
-                        return Ok(());
-                    }
-
                     let base_image = if is_current_edit {
                         match crate::get_original_image(&state) {
                             Ok((orig_data_arc, _)) => {
@@ -1467,10 +1382,6 @@ pub async fn estimate_export_sizes(
     state: tauri::State<'_, AppState>,
     app_handle: tauri::AppHandle,
 ) -> Result<usize, String> {
-    if output_format.to_lowercase() == "cube" {
-        return Ok(1_050_000 * paths.len());
-    }
-
     if paths.is_empty() {
         return Ok(0);
     }
@@ -1558,10 +1469,6 @@ pub async fn estimate_export_sizes(
             tm_override,
         );
         all_adjustments.global.show_clipping = 0;
-
-        let lut = adjustments_clone["lutPath"]
-            .as_str()
-            .and_then(|p| get_or_load_lut(&state, p).ok());
         let unique_hash =
             calculate_full_job_hash(&loaded_image.path, &adjustments_clone).wrapping_add(1);
 
@@ -1573,7 +1480,6 @@ pub async fn estimate_export_sizes(
             RenderRequest {
                 adjustments: all_adjustments,
                 mask_bitmaps: &mask_bitmaps,
-                lut,
                 roi: None,
             },
             "estimate_export_size",
@@ -1695,10 +1601,6 @@ pub async fn estimate_export_sizes(
             tm_override,
         );
         all_adjustments.global.show_clipping = 0;
-
-        let lut = js_adjustments["lutPath"]
-            .as_str()
-            .and_then(|p| get_or_load_lut(&state, p).ok());
         let unique_hash =
             calculate_full_job_hash(&source_path_str, &js_adjustments).wrapping_add(1);
 
@@ -1710,7 +1612,6 @@ pub async fn estimate_export_sizes(
             RenderRequest {
                 adjustments: all_adjustments,
                 mask_bitmaps: &mask_bitmaps,
-                lut,
                 roi: None,
             },
             "estimate_batch_export_size",
@@ -1769,6 +1670,31 @@ mod tests {
             png_decoder.icc_profile().unwrap().unwrap(),
             SRGB_ICC_PROFILE
         );
+    }
+
+    #[test]
+    fn png_preserves_color_alpha_and_sixteen_bit_samples() {
+        let source = DynamicImage::ImageRgba16(ImageBuffer::from_pixel(
+            1,
+            1,
+            image::Rgba([1024, 32768, 65535, 16384]),
+        ));
+        for depth in [8, 16] {
+            let bytes =
+                encode_image_to_bytes(&source, "png", 90, TiffBitDepth::Eight, depth).unwrap();
+            let decoded =
+                image::load_from_memory_with_format(&bytes, image::ImageFormat::Png).unwrap();
+            assert_eq!(decoded.color().bits_per_pixel(), u16::from(depth) * 4);
+            if depth == 16 {
+                assert_eq!(
+                    decoded.to_rgba16().get_pixel(0, 0).0,
+                    [1024, 32768, 65535, 16384]
+                );
+            }
+        }
+        for depth in [1, 2, 4] {
+            assert!(encode_image_to_bytes(&source, "png", 90, TiffBitDepth::Eight, depth).is_err());
+        }
     }
 
     #[test]

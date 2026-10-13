@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.CyberTimon.RapidRAW</id>
+  <id>io.github.arvid-storck.SlowRAW</id>
   <name>SlowRAW</name>
   <summary>Local photo catalog and non-destructive RAW image editor</summary>
   <metadata_license>FSFAP</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
-  <developer id="io.github.arvid-storck"><name>SlowRAW contributors</name></developer>
+  <developer id="io.github.arvid-storck"><name>Arvid Storck, chatgpt</name></developer>
   <description>
     <p>SlowRAW combines a local SQLite photo catalog with GPU-accelerated RAW editing on Windows, macOS and Linux.</p>
     <ul>
@@ -15,8 +15,8 @@
       <li>JPEG, PNG and TIFF export with selectable PNG and TIFF bit depths.</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.CyberTimon.RapidRAW.desktop</launchable>
+  <launchable type="desktop-id">io.github.arvid-storck.SlowRAW.desktop</launchable>
   <supports><control>pointing</control><control>keyboard</control></supports>
-  <content_rating type="oars-1.1"/>
+  <content_rating type="oars-1.1" />
   <url type="homepage">https://github.com/arvid-storck/RapidRAWnoAIwithCatalog</url>
 </component>

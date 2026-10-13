@@ -130,49 +130,6 @@ export function useEditorActions() {
     });
   }, [setEditor]);
 
-  const handleLutSelect = useCallback(
-    async (path: string, isBuiltIn: boolean = false) => {
-      try {
-        const result: { size: number } = await invoke('load_and_parse_lut', { path });
-        const name = path.split(/[\\/]/).pop() || 'LUT';
-        setAdjustments((prev: Adjustments) => ({
-          ...prev,
-          lutPath: path,
-          lutName: name,
-          lutSize: result.size,
-          lutIntensity: 100,
-          lutIsSceneReferred: isBuiltIn,
-          sectionVisibility: {
-            ...(prev.sectionVisibility || INITIAL_ADJUSTMENTS.sectionVisibility),
-            effects: true,
-          },
-        }));
-      } catch (err) {
-        toast.error(translate('messages.useEditorActions.failed_to_load_lut', { value1: String(err) }));
-      }
-    },
-    [setAdjustments],
-  );
-
-  const setLutPreviewOverride = useCallback(
-    (path: string | null, isBuiltIn: boolean = false) => {
-      setEditor((state) => {
-        if (!path) return { previewOverride: null };
-        const name = path.split(/[\\/]/).pop() || 'LUT';
-        return {
-          previewOverride: {
-            ...state.adjustments,
-            lutPath: path,
-            lutName: name,
-            lutIntensity: state.adjustments.lutIntensity,
-            lutIsSceneReferred: isBuiltIn,
-          },
-        };
-      });
-    },
-    [setEditor],
-  );
-
   const handleResetAdjustments = useCallback(
     (paths?: string[]) => {
       const { multiSelectedPaths, libraryActivePath, setLibrary } = useLibraryStore.getState();
@@ -426,8 +383,6 @@ export function useEditorActions() {
     setAdjustments,
     handleRotate,
     handleAutoAdjustments,
-    handleLutSelect,
-    setLutPreviewOverride,
     handleResetAdjustments,
     handleAutoLensCorrection,
     handleCopyAdjustments,

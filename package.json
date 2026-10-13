@@ -1,6 +1,6 @@
 {
   "name": "slowraw",
-  "author": "Arvid Storck, Chatgpt",
+  "author": "Arvid Storck, chatgpt",
   "private": true,
   "scripts": {
     "dev": "vite",

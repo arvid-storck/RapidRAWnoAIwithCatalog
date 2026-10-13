@@ -7,7 +7,6 @@ export enum FileFormats {
   Webp = 'webp',
   Jxl = 'jxl',
   Avif = 'avif',
-  Cube = 'cube',
 }
 
 export const FILE_FORMATS: Array<FileFormat> = [
@@ -17,7 +16,6 @@ export const FILE_FORMATS: Array<FileFormat> = [
   { id: FileFormats.Webp, name: 'WebP', extensions: ['webp'] },
   { id: FileFormats.Jxl, name: 'JPEG XL', extensions: ['jxl'] },
   { id: FileFormats.Avif, name: 'AVIF', extensions: ['avif'] },
-  { id: FileFormats.Cube, name: 'CUBE LUT', extensions: ['cube'] },
 ];
 
 export const FILENAME_VARIABLES: Array<string> = [
@@ -31,7 +29,7 @@ export const FILENAME_VARIABLES: Array<string> = [
 ];
 
 export type TiffBitDepth = 8 | 16;
-export type PngBitDepth = 1 | 2 | 4 | 8 | 16;
+export type PngBitDepth = 8 | 16;
 
 export interface ExportSettings {
   filenameTemplate: string | null;

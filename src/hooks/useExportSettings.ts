@@ -1,5 +1,11 @@
 import { useState, useMemo, useCallback, type SetStateAction } from 'react';
-import { ExportPreset, TiffBitDepth, PngBitDepth, WatermarkAnchor } from '../components/ui/ExportImportProperties';
+import {
+  ExportPreset,
+  TiffBitDepth,
+  PngBitDepth,
+  WatermarkAnchor,
+  FILE_FORMATS,
+} from '../components/ui/ExportImportProperties';
 
 // Session draft survives panel remounts and viewport/layout changes.
 const exportDraft: Record<string, unknown> = {};
@@ -46,10 +52,10 @@ export function useExportSettings() {
   const [subfolder, setSubfolder] = useDraftState<string>('subfolder', '');
 
   const handleApplyPreset = useCallback((preset: ExportPreset) => {
-    setFileFormat(preset.fileFormat);
+    setFileFormat(FILE_FORMATS.some((format) => format.id === preset.fileFormat) ? preset.fileFormat : 'jpeg');
     setJpegQuality(preset.jpegQuality);
     setTiffBitDepth(preset.tiffBitDepth ?? 16);
-    setPngBitDepth(preset.pngBitDepth ?? 8);
+    setPngBitDepth(preset.pngBitDepth === 16 ? 16 : 8);
     setEnableResize(preset.enableResize);
     setResizeMode(preset.resizeMode);
     setResizeValue(preset.resizeValue);

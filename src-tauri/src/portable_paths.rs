@@ -43,23 +43,74 @@ pub fn app_config_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+fn legacy_directory(current: &Path) -> PathBuf {
+    current.with_file_name("io.github.CyberTimon.RapidRAW")
+}
+
 fn copy_missing_tree(source: &Path, destination: &Path) -> Result<(), String> {
     if source.is_file() {
         if !destination.exists() {
             if let Some(parent) = destination.parent() {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            fs::copy(source, destination)
-                .map_err(|e| format!("Cannot copy {}: {e}", source.display()))?;
+            if source.extension().is_some_and(|ext| ext == "db") {
+                let connection = rusqlite::Connection::open_with_flags(
+                    source,
+                    rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+                )
+                .map_err(|e| e.to_string())?;
+                if let Err(error) = connection.execute(
+                    "VACUUM main INTO ?1",
+                    [destination.to_string_lossy().as_ref()],
+                ) {
+                    let _ = fs::remove_file(destination);
+                    return Err(format!(
+                        "Cannot migrate catalog {}: {error}",
+                        source.display()
+                    ));
+                }
+            } else {
+                fs::copy(source, destination)
+                    .map_err(|e| format!("Cannot copy {}: {e}", source.display()))?;
+            }
         }
     } else if source.is_dir() {
         fs::create_dir_all(destination).map_err(|e| e.to_string())?;
         for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name();
+            let name_text = name.to_string_lossy();
+            if matches!(name_text.as_ref(), "logs" | "luts")
+                || name_text.ends_with("-wal")
+                || name_text.ends_with("-shm")
+            {
+                continue;
+            }
             let file_type = entry.file_type().map_err(|e| e.to_string())?;
             if file_type.is_file() || file_type.is_dir() {
                 copy_missing_tree(&entry.path(), &destination.join(entry.file_name()))?;
             }
+        }
+    }
+    Ok(())
+}
+
+/// Copies installed data once per destination while preserving existing files.
+pub fn migrate_legacy_app_data(app: &AppHandle) -> Result<(), String> {
+    if portable_root().is_some() {
+        return migrate_legacy_portable_data(app);
+    }
+    for destination in [
+        app.path().app_data_dir(),
+        app.path().app_config_dir(),
+        app.path().app_local_data_dir(),
+    ] {
+        let destination = destination.map_err(|e| e.to_string())?;
+        let source = legacy_directory(&destination);
+        let marker = destination.join(".legacy-id-migrated");
+        if source.is_dir() && !marker.exists() {
+            copy_missing_tree(&source, &destination)?;
+            fs::write(marker, b"").map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -78,11 +129,12 @@ pub fn migrate_legacy_portable_data(app: &AppHandle) -> Result<(), String> {
     }
 
     if root.join("rapidraw.db").exists() || !root.join("portable.flag").exists() {
-        let source = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        for name in ["settings.json", "albums", "luts", "models", "library"] {
+        let source = legacy_directory(&app.path().app_data_dir().map_err(|e| e.to_string())?);
+        for name in ["settings.json", "albums", "models", "library"] {
             copy_missing_tree(&source.join(name), &destination.join(name))?;
         }
-        let legacy_config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+        let legacy_config =
+            legacy_directory(&app.path().app_config_dir().map_err(|e| e.to_string())?);
         copy_missing_tree(
             &legacy_config.join("window_state.json"),
             &destination.join("config").join("window_state.json"),
@@ -106,6 +158,34 @@ mod tests {
         fs::remove_file(dir.path().join("portable.flag")).unwrap();
         fs::write(dir.path().join("README.txt"), "RapidRAW portable\n").unwrap();
         assert!(is_portable_directory(dir.path()));
+    }
+
+    #[test]
+    fn migration_snapshots_committed_wal_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("legacy.db");
+        let destination = dir.path().join("current.db");
+        let connection = rusqlite::Connection::open(&source).unwrap();
+        connection.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE images (path TEXT); INSERT INTO images VALUES ('photo.raw');").unwrap();
+        copy_missing_tree(&source, &destination).unwrap();
+        let snapshot = rusqlite::Connection::open(&destination).unwrap();
+        assert_eq!(
+            snapshot
+                .query_row("SELECT path FROM images", [], |row| row.get::<_, String>(0))
+                .unwrap(),
+            "photo.raw"
+        );
+        connection
+            .execute("INSERT INTO images VALUES ('another.raw')", [])
+            .unwrap();
+        copy_missing_tree(&source, &destination).unwrap();
+        assert_eq!(
+            snapshot
+                .query_row("SELECT COUNT(*) FROM images", [], |row| row
+                    .get::<_, i32>(0))
+                .unwrap(),
+            1
+        );
     }
 
     #[test]

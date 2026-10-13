@@ -2,7 +2,7 @@
 Categories=Graphics;Photography;
 Comment=Local photo catalog and non-destructive RAW image editor
 Exec=SlowRAW %f
-Icon=SlowRAW
+Icon=io.github.arvid-storck.SlowRAW
 Name=SlowRAW
 Terminal=false
 Type=Application

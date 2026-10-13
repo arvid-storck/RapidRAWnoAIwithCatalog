@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import Slider from '../ui/Slider';
 import { Adjustments, Effect, CreativeAdjustment } from '../../utils/adjustments';
-import LUTControl from '../ui/LUTControl';
 import { AppSettings } from '../ui/AppProperties';
 import AdjustmentSubSection from './AdjustmentSubSection';
 import { getAdjustmentToolOrder, getHiddenAdjustmentTools } from '../../utils/adjustments';
@@ -10,8 +9,6 @@ interface EffectsPanelProps {
   adjustments: Adjustments;
   isForMask?: boolean;
   setAdjustments(adjustments: Partial<Adjustments> | ((prev: Adjustments) => Adjustments)): any;
-  handleLutSelect(path: string, isSceneReferred: boolean): void;
-  onLutHover?: (path: string | null) => void;
   appSettings: AppSettings | null;
   onDragStateChange?: (isDragging: boolean) => void;
 }
@@ -20,8 +17,6 @@ export default function EffectsPanel({
   adjustments,
   setAdjustments,
   isForMask = false,
-  handleLutSelect,
-  onLutHover,
   appSettings,
   onDragStateChange,
 }: EffectsPanelProps) {
@@ -29,22 +24,6 @@ export default function EffectsPanel({
   const handleAdjustmentChange = (key: string, value: any) => {
     const numericValue = typeof value === 'boolean' ? value : parseInt(value, 10);
     setAdjustments((prev: Partial<Adjustments>) => ({ ...prev, [key]: numericValue }));
-  };
-
-  const handleLutIntensityChange = (intensity: number) => {
-    setAdjustments((prev: Partial<Adjustments>) => ({ ...prev, lutIntensity: intensity }));
-  };
-
-  const handleLutClear = () => {
-    setAdjustments((prev: Partial<Adjustments>) => ({
-      ...prev,
-      lutPath: null,
-      lutName: null,
-      lutData: null,
-      lutSize: 0,
-      lutIntensity: 100,
-      lutIsSceneReferred: false,
-    }));
   };
 
   const hiddenTools = getHiddenAdjustmentTools(appSettings?.adjustmentLayout);
@@ -94,21 +73,6 @@ export default function EffectsPanel({
 
       {!isForMask && (
         <>
-          {!hiddenTools.includes('lut') && (
-            <AdjustmentSubSection id="lut" order={toolOrder.indexOf('lut')} title={t('adjustments.effects.lut')}>
-              <LUTControl
-                lutPath={adjustments.lutPath || null}
-                lutName={adjustments.lutName || null}
-                lutIntensity={adjustments.lutIntensity || 100}
-                onLutSelect={handleLutSelect}
-                onLutHover={onLutHover}
-                onIntensityChange={handleLutIntensityChange}
-                onClear={handleLutClear}
-                onDragStateChange={onDragStateChange}
-              />
-            </AdjustmentSubSection>
-          )}
-
           {!hiddenTools.includes('vignette') && (
             <AdjustmentSubSection
               id="vignette"
