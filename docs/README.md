@@ -479,7 +479,7 @@ npm run update:kamadak-exif
 
 ```powershell
 git init
-git remote add origin https://github.com/arvid-storck/RapidRAWnoAIwithCatalog.git
+git remote add origin https://github.com/arvid-storck/SlowRAW.git
 git fetch origin
 git reset --mixed origin/main
 git branch -M main
